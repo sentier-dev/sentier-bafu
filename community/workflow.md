@@ -9,3 +9,20 @@
 Contribution status: proposed → testing → reviewing → accepted / rejected / superseded. A useful scenario need not become an official correction. A merged importer PR alone is not dataset-provider endorsement.
 
 No owners, reviewers or provider contacts are assigned without confirming their participation. An assistant's synthesis remains a proposal. Consensus is represented by explicit approval records with objections and evidence, not a vote count or silence.
+
+## Layer classes
+
+Name what a layer does to the canonical import; the class decides what it may
+be called and where it may be served (vocabulary adopted from lci-bafu-catalog):
+
+| Class | What it changes | Rule |
+|---|---|---|
+| **A** import normalisation | encoding, units table, flow-list binding — what every importer must do to read the release | documented in the importer, part of the canonical build |
+| **B** linking repair | a declared supplier that does not resolve (F3: location `ENTSO` for datasets registered as `ENTSO-E`) | restore the declared exchange, record the original declaration |
+| **C** re-declaration | a unit or metadata correction the release's own change log names (2026 v1: year → hour on 156 datasets) | applied with the change-log entry as evidence |
+| **D** value correction BAFU has not confirmed | a different amount, a rebuilt or disaggregated inventory, a forecast | **never under the canonical name**: a separate database that says what it replaces, how, and how well |
+| **E** consumer-side | a workaround in a consumer's own inventory | not a layer of this workspace |
+
+A class-D layer is the normal shape of a hackathon result. It can be excellent
+and still not be BAFU's number: it ships beside the canonical build, pinned to
+its upstream, with its own quality figures, and consumers choose it knowingly.
