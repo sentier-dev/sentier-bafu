@@ -1,0 +1,9 @@
+.local/
+.venv/
+__pycache__/
+*.pyc
+.env
+inputs/
+output/
+cache/
+notes/private/

@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-07",
+  "baseline": {
+    "dataset": "BAFU/UVEK",
+    "release": "BAFU-2026-v1",
+    "import_repository": "https://github.com/sentier-dev/sentier-inventory",
+    "import_revision": "c5aee155f0778f02e68a67fc766e23222a11686a",
+    "input_hashes": {
+      "inventory-parquet-set-sha256": "c45bfac3ef75bad08eca3647cc23525ae86fbaf9a79dbe3fb76a16e4276be5e5"
+    }
+  },
+  "layer_revision": "a8c895d37b1ce5027733306eb95d60bb389cb31e",
+  "command": "python full_run.py --data-root <pinned-inventory-checkout>",
+  "families_tested": 766,
+  "failed_families": 0,
+  "exchange_rows": 129687,
+  "structure_rows": 25732,
+  "value_rows": 129687,
+  "excluded_sector": "99-obsolete",
+  "numeric_tolerance": {
+    "rtol": 1e-09,
+    "atol": 1e-08,
+    "equal_nan": true
+  },
+  "scope": "Toolkit-selected families and explicit exact/numeric columns; not full inventory or score parity",
+  "not_run": [
+    "score-parity",
+    "forecast-held-out-validation",
+    "units-and-mass-balance"
+  ]
+}
