@@ -71,6 +71,13 @@ def validate(record):
     if record["status"] == "accepted":
         baseline = record["baseline"]
         if not all(
+            record["layer"].get(k)
+            for k in ("kind", "implementation_url", "implementation_revision")
+        ):
+            errors.append("accepted contributions need a named, pinned implementation")
+        if any(not isinstance(r, str) or not r.strip() for r in record["required_reviewers"]):
+            errors.append("required reviewers must have nonempty identities")
+        if not all(
             baseline.get(k)
             for k in (
                 "dataset",
@@ -80,9 +87,7 @@ def validate(record):
                 "input_hashes",
             )
         ):
-            errors.append(
-                "accepted contributions need a pinned baseline and input hashes"
-            )
+            errors.append("accepted contributions need a pinned baseline and input hashes")
         if not record["required_checks"] or not record["evidence"]:
             errors.append("acceptance needs required checks and source evidence")
         # A failed or skipped required check cannot be hidden by another passed run.
@@ -91,8 +96,7 @@ def validate(record):
             if (
                 not isinstance(run, dict)
                 or run.get("baseline") != baseline
-                or run.get("layer_revision")
-                != record["layer"]["implementation_revision"]
+                or run.get("layer_revision") != record["layer"]["implementation_revision"]
             ):
                 errors.append(
                     "accepted run must identify the exact baseline and candidate revision"
@@ -105,28 +109,23 @@ def validate(record):
         for name in record["required_checks"]:
             results = checks.get(name, [])
             if not results or any(
-                c.get("status") != "passed" or not c.get("evidence_url")
-                for c in results
+                c.get("status") != "passed" or not c.get("evidence_url") for c in results
             ):
-                errors.append(
-                    f"required check {name} has missing, failed or skipped evidence"
-                )
+                errors.append(f"required check {name} has missing, failed or skipped evidence")
         approved = {
             a.get("reviewer")
             for a in record["approvals"]
-            if isinstance(a, dict) and a.get("evidence_url")
+            if isinstance(a, dict)
+            and a.get("evidence_url")
+            and a.get("baseline") == baseline
+            and a.get("layer_revision") == record["layer"]["implementation_revision"]
         }
-        if (
-            not record["required_reviewers"]
-            or not set(record["required_reviewers"]) <= approved
-        ):
+        if not record["required_reviewers"] or not set(record["required_reviewers"]) <= approved:
             errors.append(
-                "acceptance needs named reviewers and every approval with evidence"
+                "acceptance needs named reviewers and every approval tied to the exact baseline and layer revision"
             )
         if any(
-            not isinstance(o, dict)
-            or not o.get("disposition")
-            or not o.get("evidence_url")
+            not isinstance(o, dict) or not o.get("disposition") or not o.get("evidence_url")
             for o in record["objections"]
         ):
             errors.append("objections need documented disposition and evidence")
@@ -154,9 +153,7 @@ def check(root):
             errors.append(
                 "ready recommendation needs accepted contribution and confirmed recipient"
             )
-        if state in {"sent", "acknowledged", "resolved"} and not packet.get(
-            "delivery_url"
-        ):
+        if state in {"sent", "acknowledged", "resolved"} and not packet.get("delivery_url"):
             errors.append("sent recommendation needs delivery evidence")
         if state in {"acknowledged", "resolved"} and not packet.get("response_url"):
             errors.append("provider response needs evidence")
@@ -190,9 +187,7 @@ def compare(baseline_path, candidate_path):
         not baseline.get("metrics")
         or baseline["metrics"].keys() != candidate.get("metrics", {}).keys()
     ):
-        raise ValueError(
-            "metric sets differ or are empty; omitted metrics cannot hide regressions"
-        )
+        raise ValueError("metric sets differ or are empty; omitted metrics cannot hide regressions")
     metrics = {}
     for key, before in baseline["metrics"].items():
         after = candidate["metrics"][key]
@@ -200,9 +195,7 @@ def compare(baseline_path, candidate_path):
             raise ValueError(f"metric {key}: incompatible units")
         values = [before.get("value"), after.get("value")]
         if any(
-            isinstance(v, bool)
-            or not isinstance(v, (int, float))
-            or not math.isfinite(v)
+            isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v)
             for v in values
         ):
             raise ValueError(f"metric {key}: values must be finite numbers")

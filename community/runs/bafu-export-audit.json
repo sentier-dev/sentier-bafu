@@ -1,0 +1,299 @@
+{
+  "status": "passed",
+  "errors": [],
+  "source": "bafu-2026",
+  "release": "v1",
+  "source_pins": [
+    {
+      "name": "sentier-inventory",
+      "repo": "sentier-dev/sentier-inventory",
+      "ref": "2837e1b1ff1b8e2b7a8f3784c52c1d972aeb0e02"
+    },
+    {
+      "name": "sentier-vocab",
+      "repo": "sentier-dev/sentier-vocab",
+      "ref": "396c7be12d774d23161895fbf1bc00adf72875ab"
+    },
+    {
+      "name": "sentier-methods",
+      "repo": "sentier-dev/sentier-methods",
+      "ref": "ba536459f320ec694ce778be6e632048a1c777dc"
+    },
+    {
+      "name": "sentier-mappings",
+      "repo": "sentier-dev/sentier-mappings",
+      "ref": "5ba4acd92902945cfa98170fbfc75efe5e1454fd"
+    }
+  ],
+  "served_counts": {
+    "processes": 11947,
+    "production": 11947,
+    "technosphere": 114369,
+    "biosphere": 293747
+  },
+  "manifest_counts_match": true,
+  "mapped_flow_coverage": {
+    "flows_used": 2679,
+    "flows_mapped": 2566,
+    "exchange_rows": 293747,
+    "exchange_rows_mapped": 284443,
+    "residual_by_compartment": [
+      [
+        "economic issues",
+        5
+      ],
+      [
+        "emissions to air",
+        18
+      ],
+      [
+        "emissions to soil",
+        10
+      ],
+      [
+        "emissions to water",
+        32
+      ],
+      [
+        "non material emissions",
+        8
+      ],
+      [
+        "resources",
+        40
+      ]
+    ],
+    "processes": 11947,
+    "methods": 25,
+    "flows_nomenclature": 518,
+    "unit_conflicts": 0,
+    "source": "bafu-2026",
+    "inventory_db": "bafu-2026",
+    "residual_db": "bafu-2026-residual"
+  },
+  "applied_packages": [
+    "biosphere-1-curated.json",
+    "biosphere-2-inferred.json",
+    "biosphere-3-matched.json",
+    "biosphere-4-nomenclature.json"
+  ],
+  "artifact_sha256": {
+    "processes": "9f75b06aba625e48ace23c282d55342d74ab1cc640fa502e3b24b63a6b3b3278",
+    "biosphere": "a809d1bd3b748c4f5d395d81af23264f176e9328c061334636f90e035012dff8",
+    "exchanges": "46ef6b229b25fb51d8fcabefc507e3bbf2ceb2ee9c947c2f4a9fac87178e76e1",
+    "methods": "d0a1d14d91151efd3b17f551568a2fc73b39ca63bd48def04ff39e4e9adc67f5",
+    "characterization-factors": "ee370d228a9a7967d95255d3e0502ec174f21f41d465bb7f0ed3b3d3ba44e421"
+  },
+  "methods": [
+    {
+      "method": "ef-3.1:acidification",
+      "emitted_flows": 1926,
+      "characterized_flows": 14,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1912,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:climate-change",
+      "emitted_flows": 1926,
+      "characterized_flows": 95,
+      "explicit_zero_flows": 4,
+      "missing_flows": 1831,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:climate-change-biogenic",
+      "emitted_flows": 1926,
+      "characterized_flows": 7,
+      "explicit_zero_flows": 4,
+      "missing_flows": 1919,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:climate-change-fossil",
+      "emitted_flows": 1926,
+      "characterized_flows": 87,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1839,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:climate-change-land-use-and-land-use-change",
+      "emitted_flows": 1926,
+      "characterized_flows": 1,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1925,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:ef-particulate-matter",
+      "emitted_flows": 1926,
+      "characterized_flows": 23,
+      "explicit_zero_flows": 2,
+      "missing_flows": 1903,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:eutrophication-marine",
+      "emitted_flows": 1926,
+      "characterized_flows": 23,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1903,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:eutrophication-freshwater",
+      "emitted_flows": 1926,
+      "characterized_flows": 10,
+      "explicit_zero_flows": 2,
+      "missing_flows": 1916,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:eutrophication-terrestrial",
+      "emitted_flows": 1926,
+      "characterized_flows": 12,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1914,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:human-toxicity-cancer-organics",
+      "emitted_flows": 1926,
+      "characterized_flows": 297,
+      "explicit_zero_flows": 86,
+      "missing_flows": 1629,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:human-toxicity-cancer",
+      "emitted_flows": 1926,
+      "characterized_flows": 436,
+      "explicit_zero_flows": 153,
+      "missing_flows": 1490,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:human-toxicity-cancer-inorganics",
+      "emitted_flows": 1926,
+      "characterized_flows": 139,
+      "explicit_zero_flows": 67,
+      "missing_flows": 1787,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:human-toxicity-non-cancer",
+      "emitted_flows": 1926,
+      "characterized_flows": 1028,
+      "explicit_zero_flows": 81,
+      "missing_flows": 898,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:human-toxicity-non-cancer-inorganics",
+      "emitted_flows": 1926,
+      "characterized_flows": 363,
+      "explicit_zero_flows": 77,
+      "missing_flows": 1563,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:human-toxicity-non-cancer-organics",
+      "emitted_flows": 1926,
+      "characterized_flows": 665,
+      "explicit_zero_flows": 4,
+      "missing_flows": 1261,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:ionising-radiation-human-health",
+      "emitted_flows": 1926,
+      "characterized_flows": 62,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1864,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:land-use",
+      "emitted_flows": 1926,
+      "characterized_flows": 82,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1844,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:ozone-depletion",
+      "emitted_flows": 1926,
+      "characterized_flows": 21,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1905,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:photochemical-ozone-formation-human-health",
+      "emitted_flows": 1926,
+      "characterized_flows": 163,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1763,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:resource-use-fossils",
+      "emitted_flows": 1926,
+      "characterized_flows": 6,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1920,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:resource-use-minerals-and-metals",
+      "emitted_flows": 1926,
+      "characterized_flows": 33,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1893,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:water-use",
+      "emitted_flows": 1926,
+      "characterized_flows": 8,
+      "explicit_zero_flows": 0,
+      "missing_flows": 1918,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:ecotoxicity-freshwater",
+      "emitted_flows": 1926,
+      "characterized_flows": 1217,
+      "explicit_zero_flows": 85,
+      "missing_flows": 709,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:ecotoxicity-freshwater-inorganics",
+      "emitted_flows": 1926,
+      "characterized_flows": 462,
+      "explicit_zero_flows": 79,
+      "missing_flows": 1464,
+      "missing_core_gases": []
+    },
+    {
+      "method": "ef-3.1:ecotoxicity-freshwater-organics",
+      "emitted_flows": 1926,
+      "characterized_flows": 755,
+      "explicit_zero_flows": 6,
+      "missing_flows": 1171,
+      "missing_core_gases": []
+    }
+  ],
+  "scope": "Exported parquet registry identity and core CO2/CH4/N2O air-flow coverage only. Does not reproduce raw-source parity, validate all greenhouse gases, or calculate LCIA scores.",
+  "audit_provenance": {
+    "date": "2026-10-07",
+    "script": "scripts/audit_registry.py",
+    "script_sha256": "1acb1be4021ff248bf1c14f8abbfbef8bc4350bebf0281ac925a2891335dec22",
+    "manifest_sha256": "56b3766fba550265c3cc0516a12dba52898deadbe89ddaaff5319df116e580ba",
+    "python": "3.12",
+    "pandas": "3.0.6",
+    "command": "python3 scripts/audit_registry.py <local-export> --out <new-audit-file>"
+  }
+}

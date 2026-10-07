@@ -7,3 +7,6 @@ inputs/
 output/
 cache/
 notes/private/
+
+# Generated public documentation
+_site/

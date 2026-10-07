@@ -26,3 +26,7 @@ be called and where it may be served (vocabulary adopted from lci-bafu-catalog):
 A class-D layer is the normal shape of a hackathon result. It can be excellent
 and still not be BAFU's number: it ships beside the canonical build, pinned to
 its upstream, with its own quality figures, and consumers choose it knowingly.
+
+## Bind review to the tested candidate
+
+Each approval includes `reviewer`, `evidence_url`, the complete `baseline` object and `layer_revision`. Acceptance checks these against the contribution record, so approval of an earlier revision cannot promote a changed candidate. A link records the actual reviewer decision; automatic validation does not manufacture it.

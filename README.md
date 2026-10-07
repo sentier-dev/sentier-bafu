@@ -1,10 +1,16 @@
-# sentier-bafu
+<p><img src="site/assets/sentier.svg" alt="sentier.dev" width="160"></p>
 
-A public workspace for **BAFU/UVEK import, application, contributor improvements and validation**. Gather partner and hackathon evidence, develop reproducible contributions on top of a pinned canonical import, compare results, build reviewed consensus, and return actionable recommendations to the BAFU project team.
+# BAFU / UVEK · a shared dataset workspace
 
-## Canonical import and use
+**Reproduce the import. Bring contributions into application and testing. Build reviewed consensus and return actionable recommendations to BAFU.**
 
-The provider's BAFU/UVEK release is the source of truth. [sentier-importers](https://github.com/sentier-dev/sentier-importers) owns source parsing; [sentier-inventory](https://github.com/sentier-dev/sentier-inventory), [sentier-methods](https://github.com/sentier-dev/sentier-methods) and [sentier-mappings](https://github.com/sentier-dev/sentier-mappings) own the derived public artifacts. [sentier-brightway](https://github.com/sentier-dev/sentier-brightway) builds the pinned application baseline. This workspace connects those components and contribution layers rather than duplicating their importers.
+This public Sentier project connects partner evidence, Brightcon hackathon work, candidate improvements and the discussion around BAFU/UVEK. It spans releases and preserves the provider's canonical source alongside traceable, separately identified candidate layers.
+
+[Import & use](site/import.md) · [Findings ledger](community/findings.md) · [Evidence & testing](community/build-validation.md) · [Contribute](community/README.md) · [Consensus](community/workflow.md)
+
+## Start with the import
+
+[Sentier importers](https://github.com/sentier-dev/sentier-importers) parses the provider release. [Inventory](https://github.com/sentier-dev/sentier-inventory), [methods](https://github.com/sentier-dev/sentier-methods) and [mappings](https://github.com/sentier-dev/sentier-mappings) hold the derived artifacts; [sentier-brightway](https://github.com/sentier-dev/sentier-brightway) builds the pinned application baseline.
 
 ```sh
 git clone https://github.com/sentier-dev/sentier-brightway.git
@@ -14,38 +20,41 @@ uv run sentier-brightway coverage
 uv run sentier-brightway files --out ../bafu-baseline
 ```
 
-Record manifest pins, source release, inputs and coverage. The resulting Sentier build includes its pinned mappings; it is not an untouched vendor import. Treat improvements as candidate layers with separate builds. Obtain raw source exports under their provider's terms for regeneration.
+Record the release, input hashes, manifest pins and residual coverage. The build includes its pinned mappings and transformations; treat it as a derived build. Obtain raw exports under the provider's terms for regeneration. The redistribution basis for the full published inventory remains [open in issue #1](https://github.com/sentier-dev/sentier-bafu/issues/1); read [data and attribution](docs/terms-of-use.md) before sharing builds.
 
-## Report something odd in a BAFU dataset
+## Bring evidence, then test the claim
 
-The fastest contribution is a **finding**: an amount that cannot be right, a
-supplier declared with an unregistered location, a dataset flagged cumulative
-that carries no flows. Open an issue with the *BAFU data finding* template —
-dataset code, release, what you measured and how, why it cannot be right. The
-open ledger of everything found so far, with status, is
-[community/findings.md](community/findings.md); read it first, it may already
-be there. Findings are re-measured on BAFU's own release files before they go
-into the ledger, and batches go to BAFU through the recommendations tracker.
-
-| Label | Meaning |
+| Step | What belongs here |
 |---|---|
-| `bafu-finding` `needs-triage` | a new finding, not yet re-measured by a second person |
-| `upstream-reported` / `upstream-fixed` | sent to lca@bafu.admin.ch / corrected by BAFU in a named release |
-| `withdrawn` | did not survive re-measurement; kept so nobody re-finds it |
-| `informational` | a method or scope difference, not a defect |
-| `handled-in-layer` | a contribution layer works around it; the upstream question stays open |
-| `discussion` | a question or decision about the data, a method, or how a finding goes upstream |
-| `licence` | Terms of Use, redistribution, attribution — see [docs/terms-of-use.md](docs/terms-of-use.md) |
+| Canonical import | Source release, identifiers, hashes and reproducible import path |
+| Partner contributions | Findings, proposed mappings, models and scenarios with evidence |
+| Application & testing | Separate candidates, named exchange changes, coverage and score comparisons |
+| Reviewed consensus | Actual reviewer decisions, objections and their disposition |
+| Recommendations to BAFU | Agreed findings, delivery evidence and provider responses |
 
-## Contribute, apply, test, review
+A **finding** starts with the source release, dataset code, what you measured and how. Read [the ledger](community/findings.md), then [open an issue](https://github.com/sentier-dev/sentier-bafu/issues/new/choose). Reproduce observations against the provider's source files before concluding that BAFU's data is wrong. An importer defect belongs to the component that introduced it.
 
-Start at [the community workspace](community/README.md), [application and testing](community/application-and-testing.md), [the hackathon assessment](community/hackathon-assessment.md), [public evidence](evidence/index.md), and [contribution records](community/contributions/). No private repository is required to collaborate. Dataset releases are recorded explicitly; the repository spans releases.
+A **contribution layer** gets a [record](community/templates/contribution.json), isolated candidate build and [validation plan](community/build-validation.md). A reconstruction of an aggregated inventory is a new inventory claim; representation parity, inventory correction and forecasting require different tests.
+
+## Current work
+
+- The [hackathon copied-process contribution](community/contributions/C001.json) remains proposed. Its [round-trip run](community/runs/hackathon-roundtrip.json) passed across 766 families; units/mass balance, score parity and held-out forecasting validation remain open.
+- The [lci-bafu-catalog findings](community/findings.md) connect source observations with their discussion threads. [Importer parity](https://github.com/sentier-dev/sentier-bafu/issues/2), [aggregation](https://github.com/sentier-dev/sentier-bafu/issues/3), [maintenance](https://github.com/sentier-dev/sentier-bafu/issues/4) and [method/build identity](https://github.com/sentier-dev/sentier-bafu/issues/5) have separate evidence and follow-up requirements.
+- The [measured BAFU export audit](community/runs/bafu-export-audit.json) passes identity/count checks and core-gas characterization coverage on the pinned 420,063-row registry; it does not claim raw-source or score parity.
+- Shared tooling checks named row-count deltas, required characterization, exact artifact-hash metadata and portable summary identity. Passing a supplied audit does not establish source parity or partner agreement.
 
 ```sh
 python3 scripts/community.py check
 python3 -m unittest discover -s community/tests
+python3 scripts/build_checks.py path/to/build-audit.json
 ```
 
-The first candidate is the BAFU copied-process toolkit from the Brightcon hackathon, pinned to its open PR. It is under review, not an accepted replacement for the canonical representation. Forecasts, lossless compression and upstream inventory corrections need distinct validation and claims.
+The [synthetic audit example](community/templates/build-audit.json) is a format demonstration, not a measured BAFU build.
 
-Consensus and provider responses are tracked alongside contributions. No new partner agreement or sent recommendation is assumed. Original code and documentation: MIT; source datasets retain their own terms and citations. Keep restricted exports and confidential notes local.
+## Documentation site
+
+The [responsive site](site/README.md) shares Sentier's visual identity with [sentier-agribalyse](https://github.com/sentier-dev/sentier-agribalyse). Its public pages cover import, findings, application tests and consensus. Build locally with `uv run --with markdown==3.7 scripts/build_site.py`; the repository includes a GitLab Pages pipeline. Generated pages contain coordination material only, with no inventory downloads.
+
+## Data, credit and participation
+
+Original code and documentation are MIT. Source datasets retain their own terms, attribution and modification requirements. Keep restricted exports and confidential partner evidence local. No new reviewer consensus, sent recommendation or provider endorsement is implied by the workspace. See [the workflow](community/workflow.md), [recommendation tracker](community/recommendations/tracker.json) and [terms](docs/terms-of-use.md).

@@ -1,0 +1,52 @@
+{
+  "dataset": "BAFU / UVEK",
+  "provider": "BAFU",
+  "repository": "https://github.com/sentier-dev/sentier-bafu",
+  "source_ref": "main",
+  "description": "The public Sentier workspace for BAFU/UVEK imports, partner contributions, application tests, reviewed consensus and recommendations to BAFU.",
+  "sibling_name": "AGRIBALYSE",
+  "sibling_url": "https://github.com/sentier-dev/sentier-agribalyse",
+  "validation_note": "The hackathon round-trip test covers 766 process families. Score parity, units/mass balance and forecasting validation remain open; reconstruction is a separate inventory claim.",
+  "documents": [
+    {
+      "title": "Import & use",
+      "source": "site/import.md",
+      "page": "import.html"
+    },
+    {
+      "title": "Evidence & testing",
+      "source": "community/build-validation.md",
+      "page": "testing.html"
+    },
+    {
+      "title": "Findings ledger",
+      "source": "community/findings.md",
+      "page": "findings.html"
+    },
+    {
+      "title": "Contribute",
+      "source": "community/README.md",
+      "page": "contribute.html"
+    },
+    {
+      "title": "Apply a candidate layer",
+      "source": "community/application-and-testing.md",
+      "page": "application.html"
+    },
+    {
+      "title": "Consensus & recommendations",
+      "source": "community/workflow.md",
+      "page": "consensus.html"
+    },
+    {
+      "title": "Hackathon evidence",
+      "source": "community/hackathon-assessment.md",
+      "page": "hackathon.html"
+    },
+    {
+      "title": "Data & attribution",
+      "source": "docs/terms-of-use.md",
+      "page": "terms.html"
+    }
+  ]
+}

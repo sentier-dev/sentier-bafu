@@ -6,9 +6,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location(
-    "community_records", ROOT / "scripts/community.py"
-)
+spec = importlib.util.spec_from_file_location("community_records", ROOT / "scripts/community.py")
 records = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(records)
 
@@ -23,9 +21,7 @@ class ContributionTests(unittest.TestCase):
             evidence=["https://example.org/source"],
             required_checks=["roundtrip"],
             required_reviewers=["partner"],
-            approvals=[
-                {"reviewer": "partner", "evidence_url": "https://example.org/approval"}
-            ],
+            approvals=[{"reviewer": "partner", "evidence_url": "https://example.org/approval"}],
         )
         self.record["baseline"] = dict(
             dataset="test",
@@ -35,6 +31,12 @@ class ContributionTests(unittest.TestCase):
             input_hashes={"source": "hash"},
         )
         self.record["layer"]["implementation_revision"] = "def"
+        self.record["layer"].update(
+            kind="synthetic", implementation_url="https://example.org/layer"
+        )
+        self.record["approvals"][0].update(
+            baseline=copy.deepcopy(self.record["baseline"]), layer_revision="def"
+        )
         self.record["runs"] = [
             dict(
                 baseline=copy.deepcopy(self.record["baseline"]),
@@ -67,6 +69,16 @@ class ContributionTests(unittest.TestCase):
         self.record["objections"] = [{"reason": "boundary"}]
         self.assertTrue(records.validate(self.record))
 
+    def test_approval_for_old_layer_is_not_consensus(self):
+        self.record["approvals"][0]["layer_revision"] = "old-layer"
+        self.assertTrue(records.validate(self.record))
+
+    def test_empty_implementation_cannot_be_accepted(self):
+        self.record["layer"]["implementation_revision"] = ""
+        self.record["runs"][0]["layer_revision"] = ""
+        self.record["approvals"][0]["layer_revision"] = ""
+        self.assertTrue(records.validate(self.record))
+
     def test_comparison_checks_scope_metrics_units_and_finiteness(self):
         baseline = records.read(ROOT / "community/templates/run-summary.json")
         with tempfile.TemporaryDirectory() as directory:
@@ -78,9 +90,7 @@ class ContributionTests(unittest.TestCase):
             candidate = copy.deepcopy(baseline)
             candidate["metrics"]["processes"]["value"] = 2
             after.write_text(json.dumps(candidate))
-            self.assertEqual(
-                records.compare(before, after)["metrics"]["processes"]["delta"], 1
-            )
+            self.assertEqual(records.compare(before, after)["metrics"]["processes"]["delta"], 1)
             for change in [
                 lambda x: x["scope"].update(method="different"),
                 lambda x: x["metrics"].pop("processes"),
