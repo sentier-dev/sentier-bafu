@@ -1,0 +1,50 @@
+name: BAFU data finding
+description: A measured observation about a BAFU/UVEK dataset or release (not a contribution layer)
+title: "[Finding] "
+labels: ["bafu-finding", "needs-triage"]
+body:
+  - type: input
+    id: dataset
+    attributes:
+      label: BAFU activity code(s), name, geography, unit
+      placeholder: "191385 Refrigerant R134a, at plant (RER), kg"
+    validations:
+      required: true
+  - type: dropdown
+    id: release
+    attributes:
+      label: Release observed in
+      options: ["BAFU:2026 v1", "BAFU:2025 v2", "both", "other (say which below)"]
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where you looked
+      placeholder: "ecoSpold XML / LCIA results workbook / openLCA package / a sentier-inventory parquet at commit …"
+    validations:
+      required: true
+  - type: textarea
+    id: measured
+    attributes:
+      label: What you measured, and how
+      description: The value with its unit, the exchange it sits on, and the command or script that produced it. Numbers, not impressions.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it cannot be right
+      description: A physical bound, a mass balance, a literature range, the same dataset in another release or its own report (cite the report by title; do not paste its text).
+    validations:
+      required: true
+  - type: textarea
+    id: exposure
+    attributes:
+      label: Exposure, if known
+      description: Which other datasets consume this one; how much of a typical result it drives. "Unknown" is a fine answer.
+  - type: textarea
+    id: correction
+    attributes:
+      label: Suggested correction (optional)

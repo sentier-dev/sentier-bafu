@@ -1,0 +1,26 @@
+name: Discussion
+description: A question or decision about the data, a method difference, or how a finding goes upstream
+title: "[Discussion] "
+labels: ["discussion"]
+body:
+  - type: input
+    id: topic
+    attributes:
+      label: Topic
+      description: One sentence — what should we decide, understand or change?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Links — a ledger row in community/findings.md, a BAFU release note, a contribution record, a paper.
+  - type: textarea
+    id: positions
+    attributes:
+      label: Options or positions so far
+  - type: textarea
+    id: settle
+    attributes:
+      label: What would settle it
+      description: A measurement, a reply from lca@bafu.admin.ch, a decision by a named maintainer.

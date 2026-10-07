@@ -16,6 +16,27 @@ uv run sentier-brightway files --out ../bafu-baseline
 
 Record manifest pins, source release, inputs and coverage. The resulting Sentier build includes its pinned mappings; it is not an untouched vendor import. Treat improvements as candidate layers with separate builds. Obtain raw source exports under their provider's terms for regeneration.
 
+## Report something odd in a BAFU dataset
+
+The fastest contribution is a **finding**: an amount that cannot be right, a
+supplier declared with an unregistered location, a dataset flagged cumulative
+that carries no flows. Open an issue with the *BAFU data finding* template —
+dataset code, release, what you measured and how, why it cannot be right. The
+open ledger of everything found so far, with status, is
+[community/findings.md](community/findings.md); read it first, it may already
+be there. Findings are re-measured on BAFU's own release files before they go
+into the ledger, and batches go to BAFU through the recommendations tracker.
+
+| Label | Meaning |
+|---|---|
+| `bafu-finding` `needs-triage` | a new finding, not yet re-measured by a second person |
+| `upstream-reported` / `upstream-fixed` | sent to lca@bafu.admin.ch / corrected by BAFU in a named release |
+| `withdrawn` | did not survive re-measurement; kept so nobody re-finds it |
+| `informational` | a method or scope difference, not a defect |
+| `handled-in-layer` | a contribution layer works around it; the upstream question stays open |
+| `discussion` | a question or decision about the data, a method, or how a finding goes upstream |
+| `licence` | Terms of Use, redistribution, attribution — see [docs/terms-of-use.md](docs/terms-of-use.md) |
+
 ## Contribute, apply, test, review
 
 Start at [the community workspace](community/README.md), [application and testing](community/application-and-testing.md), [the hackathon assessment](community/hackathon-assessment.md), [public evidence](evidence/index.md), and [contribution records](community/contributions/). No private repository is required to collaborate. Dataset releases are recorded explicitly; the repository spans releases.
