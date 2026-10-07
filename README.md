@@ -53,7 +53,7 @@ The [synthetic audit example](community/templates/build-audit.json) is a format 
 
 ## Documentation site
 
-The [responsive site](site/README.md) shares Sentier's visual identity with [sentier-agribalyse](https://github.com/sentier-dev/sentier-agribalyse). Its public pages cover import, findings, application tests and consensus. Build locally with `uv run --with markdown==3.7 scripts/build_site.py`; the repository includes a GitLab Pages pipeline. Generated pages contain coordination material only, with no inventory downloads.
+**[Open the BAFU / UVEK site](https://sentier-dev.github.io/sentier-bafu/).** The responsive site shares Sentier's visual identity with [sentier-agribalyse](https://github.com/sentier-dev/sentier-agribalyse). Its public pages cover import, findings, application tests and consensus. The [Documentation workflow](.github/workflows/pages.yml) checks pull requests and publishes updates from `main` to GitHub Pages. Build locally with `uv run --no-project --with markdown==3.7 scripts/build_site.py`; see [site maintenance](site/README.md). Generated pages contain coordination material only, with no inventory downloads.
 
 ## Data, credit and participation
 
