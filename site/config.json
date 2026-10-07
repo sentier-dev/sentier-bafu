@@ -4,8 +4,8 @@
   "repository": "https://github.com/sentier-dev/sentier-bafu",
   "source_ref": "main",
   "description": "The public Sentier workspace for BAFU/UVEK imports, partner contributions, application tests, reviewed consensus and recommendations to BAFU.",
-  "sibling_name": "AGRIBALYSE",
-  "sibling_url": "https://github.com/sentier-dev/sentier-agribalyse",
+  "sibling_name": "AGRIBALYSE preview",
+  "sibling_url": "https://mklarmann.github.io/sentier-agribalyse/",
   "validation_note": "The hackathon round-trip test covers 766 process families. Score parity, units/mass balance and forecasting validation remain open; reconstruction is a separate inventory claim.",
   "documents": [
     {
