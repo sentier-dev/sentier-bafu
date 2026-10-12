@@ -6,7 +6,7 @@
   "description": "The public Sentier workspace for BAFU/UVEK imports, partner contributions, application tests, reviewed consensus and recommendations to BAFU.",
   "sibling_name": "AGRIBALYSE preview",
   "sibling_url": "https://mklarmann.github.io/sentier-agribalyse/",
-  "validation_note": "Hackathon round-trip checks and the mapping-file consistency audit are recorded. Independent LCIA reproduction and reviewer approvals remain open.",
+  "validation_note": "Importer fixes and application checks are tracked in issues and pull requests. Candidate method reproduction and community review remain open.",
   "documents": [
     {
       "title": "Import & use",
@@ -44,7 +44,7 @@
       "page": "hackathon.html"
     },
     {
-      "title": "Brightway mapping review",
+      "title": "Mapping integration",
       "source": "community/mutel-mapping-review.md",
       "page": "mapping-review.html"
     },

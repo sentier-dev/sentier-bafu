@@ -41,14 +41,16 @@ linked issues. Dataset values and names are quoted freely; text from the LCI
 | F10 | 196588 Disposal, rectangular straw bale | flagged type=2 but carries only its production exchange — a cumulative LCI with no flows; the two straw-bale siblings carry 1,656 flows each. | 2026 v1 | open | [#3](https://github.com/sentier-dev/sentier-bafu/issues/3) · [#11](https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/11) |
 | F11 | 1,289 datasets named `xx …` / `xxx …` | retired by name prefix and/or category words (`obsolete`: 803, `notMaintained`: 441, current category: 45; 57 `obsolete` datasets carry no prefix). The convention is undocumented; consumers that match by name anchor on retired datasets unknowingly. | 2026 v1 | open | [#4](https://github.com/sentier-dev/sentier-bafu/issues/4) · [#15](https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/15) |
 
-## Review of external mapping work
+## Mapping import work with Chris
 
-[Chris Mutel's BAFU → openLCA mapping review](mutel-mapping-review.md) records
-the file-consistency audit and six integration findings from his October 2026
-reports and accompanying mapping. [Contribution C002](contributions/C002.json)
-tracks the remaining reproduction and review requirements. These observations
-are kept separate from the re-measured source defects above: file agreement and
-author-reported LCIA results do not establish independent score parity.
+[Mapping integration status](mutel-mapping-review.md) links the concrete importer
+fixes from this shared work. [#14](https://github.com/sentier-dev/sentier-bafu/issues/14)
+tracks conversion factors and unit compatibility;
+[#15](https://github.com/sentier-dev/sentier-bafu/issues/15) tracks CF fallback
+instructions the current consumer cannot apply.
+[C002](contributions/C002.json) keeps the candidate method integration and
+reproduction requirements. Importer issues are distinct from the raw-source
+findings above; code fixes do not establish a new method's score parity.
 
 ## How a finding moves
 
