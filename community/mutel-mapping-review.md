@@ -30,7 +30,9 @@ produce Sentier records and mapping packages, and
 [sentier-brightway](https://github.com/sentier-dev/sentier-brightway) to consume
 the pinned BAFU→EF 3.1 package. Keep the source flow identity and its unit;
 one shared target flow must have one unit, with each source’s conversion
-factor applied exactly once. A unit/fallback refusal identifies a package,
+factor applied exactly once. Declared Bq→kBq, km→m and kWh→MJ mappings need
+their explicit correct multiplier; missing/null factors cannot default these
+magnitude changes to one. A unit/fallback refusal identifies a package,
 entry or flow that needs fixing before the build can proceed.
 
 These fixes do not turn the current EF 3.1 bridge into a consumer of the
