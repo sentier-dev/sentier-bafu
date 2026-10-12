@@ -1,0 +1,111 @@
+{
+  "kind": "mapping-file-consistency-review",
+  "status": "passed",
+  "errors": [],
+  "mismatched_fields": {},
+  "source_id": "bafu-2026-v1-ecospold1",
+  "target_id": "openlca-lcia-methods-2.8.2",
+  "mapping_version": "1.0.0",
+  "declared_licenses": [
+    "CC-BY-4.0"
+  ],
+  "counts": {
+    "workbook_source_flows": 2679,
+    "json_mapped_flows": 2434,
+    "workbook_unmapped_flows": 245,
+    "workbook_exchange_rows": 293747,
+    "workbook_mapped_exchange_rows": 272666,
+    "workbook_unmapped_exchange_rows": 21081,
+    "workbook_weighted_mapping_coverage": 0.9282341606893006,
+    "explicit_conversion_factors": 161,
+    "rows_with_fallbacks": 134
+  },
+  "match_steps": {
+    "exact": 1835,
+    "rename_synonym_unspecified_origin": 8,
+    "rename_metal_only_species": 191,
+    "rename_synonym_particulate_matter": 13,
+    "rename_metal_species_scores": 11,
+    "rename_metal_species_only_characterised": 22,
+    "rename_synonym_biogenic_non_fossil": 8,
+    "cas": 185,
+    "bwflows": 138,
+    "rename_synonym_chemical_name": 8,
+    "bwflows_fix": 3,
+    "case": 8,
+    "rename_land_arable": 3,
+    "rename_synonym_black_carbon": 1
+  },
+  "unit_mappings": [
+    {
+      "source_unit": "Bq",
+      "target_unit": "kBq",
+      "factor": 0.001,
+      "flows": 158
+    },
+    {
+      "source_unit": "Nm3",
+      "target_unit": "m3",
+      "factor": 1,
+      "flows": 2
+    },
+    {
+      "source_unit": "kWh",
+      "target_unit": "MJ",
+      "factor": 3.6,
+      "flows": 1
+    },
+    {
+      "source_unit": "km",
+      "target_unit": "m",
+      "factor": 1000.0,
+      "flows": 2
+    },
+    {
+      "source_unit": "m2a",
+      "target_unit": "m2*a",
+      "factor": 1,
+      "flows": 52
+    },
+    {
+      "source_unit": "personkm",
+      "target_unit": "p*km",
+      "factor": 1,
+      "flows": 2
+    },
+    {
+      "source_unit": "tkm",
+      "target_unit": "t*km",
+      "factor": 1,
+      "flows": 2
+    }
+  ],
+  "fallback_kinds": {
+    "parent compartment": 105,
+    "duplicate": 24,
+    "ion": 5
+  },
+  "fallbacks_without_method_scope": 134,
+  "inventory_recomputed": false,
+  "lcia_recomputed": false,
+  "limitations": [
+    "Workbook exchange counts are reconciled, not re-counted from the source archive.",
+    "Unit factors are compared between files; application to inventories is not tested.",
+    "Nm3 to m3 assumes the workbook's stated normal conditions; state conditions are not independently verified.",
+    "Target CF existence, factor units, directions and fallback applicability are not validated.",
+    "Source archive, method package and scoring code hashes require a separate run manifest."
+  ],
+  "input_files": [
+    {
+      "name": "bafu_2026v1_to_openlca_lcia_2.8.2.randonneur.json",
+      "sha256": "b798f39a1ea8ba5126285d6702c99d94976e3179a448b3c4ba1eac1eaab7cc91"
+    },
+    {
+      "name": "bafu_2026v1_to_openlca_lcia_2.8.2.xlsx",
+      "sha256": "f57b8c89a38ff1dca5bef3d84716145f0f3283384629a73c3dcd86ec6510c8e5"
+    }
+  ],
+  "workbook_fallback_method_rows": {
+    "EF 3.1 Method (adapted)": 536
+  }
+}
