@@ -1,6 +1,6 @@
 {
   "id": "C002",
-  "title": "Review Chris Mutel’s BAFU 2026 v1 → openLCA 2.8.2 mapping and reproduce method-specific results",
+  "title": "Integrate the BAFU mapping work with Chris Mutel and reproduce method-specific results",
   "status": "proposed",
   "baseline": {
     "dataset": "BAFU/UVEK",
@@ -36,7 +36,9 @@
     "https://github.com/brightway-labs/brightway-flows/issues/376",
     "https://github.com/brightway-labs/brightway-flows/issues/377",
     "https://github.com/brightway-labs/brightway-flows/issues/380",
-    "https://github.com/brightway-labs/brightway-flows/issues/381"
+    "https://github.com/brightway-labs/brightway-flows/issues/381",
+    "https://github.com/sentier-dev/sentier-bafu/issues/14",
+    "https://github.com/sentier-dev/sentier-bafu/issues/15"
   ],
   "required_checks": [
     "mapping-file-integrity",
