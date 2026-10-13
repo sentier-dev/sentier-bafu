@@ -1,0 +1,485 @@
+{
+  "sources": {
+    "workspace": {
+      "commit": "87d14afb285c95e7dfd6c69c113a06a593e7f477",
+      "file_count": 52,
+      "files": [
+        {
+          "path": ".github/ISSUE_TEMPLATE/bafu-data-finding.yml",
+          "sha256": "0a5619c7a703f98e25609bf51b6bbfeffb3d07b843a69a0f4c42ce1717987030"
+        },
+        {
+          "path": ".github/ISSUE_TEMPLATE/community-contribution.yml",
+          "sha256": "69338e7f5575ef4324cd610e08df3feed21355f1bcb5d986e5ffe0a4230fec6b"
+        },
+        {
+          "path": ".github/ISSUE_TEMPLATE/discussion.yml",
+          "sha256": "55060f640c26bbc8f17e87c8d80e2db044ea9293d8b705c7a4d261a6b1d31bdf"
+        },
+        {
+          "path": ".github/PULL_REQUEST_TEMPLATE.md",
+          "sha256": "aa968dd216c779b411945dd20008f33ba33e2a7ae308056db928c071934c69c7"
+        },
+        {
+          "path": ".github/workflows/pages.yml",
+          "sha256": "7753928c5a09039b63bb4818439bf2d9500b7e03cade17000813c346c29c75b1"
+        },
+        {
+          "path": ".gitignore",
+          "sha256": "e61075ad0b494e2f98eaf864f0f4781e45b577703a62cc89869ad638dd231eb1"
+        },
+        {
+          "path": ".gitlab-ci.yml",
+          "sha256": "656e89c0544a5692e9cd6800095264bf0c4decb4fd7e65b3ff951af2e5cca5c6"
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "sha256": "245d19cb88795199fc46ebfdaa9e0e46d7a6edd76e6644eb0dba9dd04e88b524"
+        },
+        {
+          "path": "LICENSE",
+          "sha256": "3778c928d02a75605760c2d18453905c653f5a693118eea4ccc23b47eeea4af3"
+        },
+        {
+          "path": "README.md",
+          "sha256": "054773444b38fd934f399b1e6dfd83b1134c8c3fb7aa348a95eaa37e27ba3926"
+        },
+        {
+          "path": "community/README.md",
+          "sha256": "b6e38948ecfa0ecaa58e687b5e261f214aa6475743d7392f185cb26824660ec1"
+        },
+        {
+          "path": "community/application-and-testing.md",
+          "sha256": "3773460caf2f382a073c814b61f634386008783e7ffbc72a2ede1d7539a9c808"
+        },
+        {
+          "path": "community/build-validation.md",
+          "sha256": "cfbaed68dbb336df14a4f2b15d5f778525628dc80592c8277c2d0a18f8ea3d78"
+        },
+        {
+          "path": "community/ci/README.md",
+          "sha256": "399fd6d83153f1232241d1fbb4dd646eaf043a00898193519180b602b6ef0921"
+        },
+        {
+          "path": "community/ci/github-actions.yml",
+          "sha256": "a9a30956919d99b53867cbb8b52470c2aa58308cfde1f6fab7b8eb3803bd7866"
+        },
+        {
+          "path": "community/contributions/C001.json",
+          "sha256": "65965d86474457a94cfa4167828a33e8ef252d1a118cecdc05b7450d0c2fc132"
+        },
+        {
+          "path": "community/contributions/C002.json",
+          "sha256": "defba80c2779a298de21b1d2f3c0eeeb4d2370be8804b79f467715f1008116c7"
+        },
+        {
+          "path": "community/findings.md",
+          "sha256": "d0267a585c6420b64d8b04fab03793191426bba644d7db9797b511b055d9b94f"
+        },
+        {
+          "path": "community/hackathon-assessment.md",
+          "sha256": "cf377168201ba33f68ff14111c92cfe42b0ef830c3751d7350ae27bd13d2e19f"
+        },
+        {
+          "path": "community/mutel-mapping-review.md",
+          "sha256": "38c94d21e668666d7dbb85f952e4ce0bb5e5260f7d555841c1ece69d4dfcddc5"
+        },
+        {
+          "path": "community/recommendations/README.md",
+          "sha256": "d83116d273a1d48293cea31edce7cc361977cc01c00452b0f68c3f626b90d70b"
+        },
+        {
+          "path": "community/recommendations/tracker.json",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        {
+          "path": "community/runs/bafu-export-audit.json",
+          "sha256": "416fa3d8b07085dfeaf0ad76cb1e4d44d7d21c9f77e79fb665a05a3337f35258"
+        },
+        {
+          "path": "community/runs/hackathon-roundtrip.json",
+          "sha256": "cc29ac28360d9b9318dba455ed9bdbdd739342751aa622a6678cf73cb60719af"
+        },
+        {
+          "path": "community/runs/mutel-mapping-audit.json",
+          "sha256": "fc1450f2748265494fb9b2ea1a2f00ec124b990fe12627dcc04d1ab73772bad3"
+        },
+        {
+          "path": "community/templates/build-audit.json",
+          "sha256": "d744340fa52348f9076bb1f9bcda72ff2cbda6e5b82f652a31c640863bf24612"
+        },
+        {
+          "path": "community/templates/contribution.json",
+          "sha256": "1ab8f08057a855593afd4f5cdd1d97b1e54bcf542b3f7871936d35edbdf9744a"
+        },
+        {
+          "path": "community/templates/intake.md",
+          "sha256": "c2a89495022065a7ff00d35e5ad6b24cc5bf8f44311dda583ba6fcf964e0100d"
+        },
+        {
+          "path": "community/templates/recommendation.md",
+          "sha256": "67d11ed7cb3fde833e445a0fcc5977a321137108e334d102631737f5db38e199"
+        },
+        {
+          "path": "community/templates/run-summary.json",
+          "sha256": "3611be5de189a5ddc57b25c18809a18c78ea59f4442a2b3fd0c5cb40ae08c61c"
+        },
+        {
+          "path": "community/tests/test_build_checks.py",
+          "sha256": "684c244d8eb67db683e9678196d7cc25aa33d165505a72ab382ba6355858dc8c"
+        },
+        {
+          "path": "community/tests/test_flow_mapping_audit.py",
+          "sha256": "1d74aeadd2d6f0d133ac11ad7a509ee9db28afd211c8db19c917ac432fe8e578"
+        },
+        {
+          "path": "community/tests/test_records.py",
+          "sha256": "7421571237c9b784239b9f32683f2f3a50bfda99e0068e27c6ffb90d3d2c489e"
+        },
+        {
+          "path": "community/workflow.md",
+          "sha256": "0959ee7a4272c8c1da304f907ddf87ea07a04844b8a685505f1a774904bfadaa"
+        },
+        {
+          "path": "docs/terms-of-use.md",
+          "sha256": "bed48b95c18074ba8400839e194d307828585291951f212aaa98b6fdad9e72a1"
+        },
+        {
+          "path": "evidence/index.json",
+          "sha256": "6cfd78bb064720041fa7059cb26ff6173e6aa29cf9f67f8236f984ea60e36b2a"
+        },
+        {
+          "path": "evidence/index.md",
+          "sha256": "566c09be23f02cd29921cf48cce3460f937667c0cd4bd2fb0dd945f70af3c8b7"
+        },
+        {
+          "path": "scripts/audit_flow_mapping.py",
+          "sha256": "324ad21757774dffda578d7a00e2be55534709c5c72ea6c86f55d313de2223e2"
+        },
+        {
+          "path": "scripts/audit_registry.py",
+          "sha256": "1acb1be4021ff248bf1c14f8abbfbef8bc4350bebf0281ac925a2891335dec22"
+        },
+        {
+          "path": "scripts/build_checks.py",
+          "sha256": "5f39ed5a1704e4461d04d9d095023b2f7e3aadded1d6f0def89d68ca7623ec47"
+        },
+        {
+          "path": "scripts/build_site.py",
+          "sha256": "7589295c7b2bbee0225183abfa0fe1b733e6cb28a0d1fa1c4d3c4ad9b0d11093"
+        },
+        {
+          "path": "scripts/check_site.py",
+          "sha256": "1bb00fda8887d7fb670df7f9921ef1c96590616ef25e06335ed788291f9a9eaf"
+        },
+        {
+          "path": "scripts/community.py",
+          "sha256": "ea3f0b0851aa0bb5dc21e1cce1e8697086ca8397632746f20c993b35fbac9d32"
+        },
+        {
+          "path": "site/README.md",
+          "sha256": "1659e3a5e8beacc4e2243280fbc396696c7d71cd9aec4206282a5fb07cd9d5c1"
+        },
+        {
+          "path": "site/assets/OFL.txt",
+          "sha256": "ee9491ad3ea5d390878695bd6cce49beb3cacd5c4312f8ab574b541e9f7afa21"
+        },
+        {
+          "path": "site/assets/dds-logo.svg",
+          "sha256": "7450c8fb999152f7dec6922c1d842fbb7cc39e1ce3fb14809bc2645f97d0535f"
+        },
+        {
+          "path": "site/assets/favicon-32x32.png",
+          "sha256": "f0fd5467f05e700ed547e301209962464bc2a84259167c46ab4ed52ebc5dcd31"
+        },
+        {
+          "path": "site/assets/nunito.ttf",
+          "sha256": "bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207"
+        },
+        {
+          "path": "site/config.json",
+          "sha256": "bace154f08e9d96cefa63ff7f4e47ee47e1318ed146606ca9f518cbd90f0d302"
+        },
+        {
+          "path": "site/import.md",
+          "sha256": "f9a5939224af37425a81555403a5ae7a3ab6e03d4df7919ea3e07d1c124e9282"
+        },
+        {
+          "path": "site/style.css",
+          "sha256": "30823f1b0e0fc5b3aa23d24641dd0930821e3cee9994a8617f3c93e98fbafd6a"
+        },
+        {
+          "path": "tests/test_audit_registry.py",
+          "sha256": "a661852e60a602f977a2ef3661e9dc892ed9020b68861abcc5af5b3292f8e38c"
+        }
+      ]
+    },
+    "community": {
+      "commit": "15bbfbb66c5e8bd864623d61a1169402838eaed8",
+      "file_count": 64,
+      "files": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "sha256": "3d2371cbad13fa3034d44032eabd2179963ad75453ba76b715d21b66c186299f"
+        },
+        {
+          "path": ".gitignore",
+          "sha256": "929210f21bc218e4ceb240f4f944903cf586c3abda21e07fdd56803d67e8974e"
+        },
+        {
+          "path": ".python-version",
+          "sha256": "a876e0b10411037a012498b9fe18d9bc1df32ed8b722a13564dc944ddcfd9135"
+        },
+        {
+          "path": "LICENSE",
+          "sha256": "3778c928d02a75605760c2d18453905c653f5a693118eea4ccc23b47eeea4af3"
+        },
+        {
+          "path": "README.md",
+          "sha256": "804a3feadf5c72c8822d376a9e0d44412e08b09d7e532725caefa1707f2ce00e"
+        },
+        {
+          "path": "pyproject.toml",
+          "sha256": "3ab7a0b44c971523d704c20cd6cc5f48758ff650da58eda35f159014eac46fac"
+        },
+        {
+          "path": "scripts/build_brightway_flows_data.py",
+          "sha256": "e3dbece69230e77af0f3f4f586dd4790ccd750f30a2a9aa30450bfe42fac7e19"
+        },
+        {
+          "path": "src/bafu_community_fixes/__init__.py",
+          "sha256": "079649a7973a9c07834208f2b0866ac5cf8674b5cfcc41069b9d2e29ac8b9d72"
+        },
+        {
+          "path": "src/bafu_community_fixes/brightway_flows.py",
+          "sha256": "094198bf3644ced8de83d29808dc5a16f48f4bd07f3fb9fbe54c635cd44f13b7"
+        },
+        {
+          "path": "src/bafu_community_fixes/changes.py",
+          "sha256": "c9c1424a313bb745c9789bfdd49e573bb11f81e031fe8fc93dda79a3a64a5340"
+        },
+        {
+          "path": "src/bafu_community_fixes/cli.py",
+          "sha256": "394b0e42b15300032d81c3b6083a82bb28e47bcae677c7e703b92fbd0c992f0a"
+        },
+        {
+          "path": "src/bafu_community_fixes/compliance.py",
+          "sha256": "43a5f59d40e8ccd5f7ba4749cade17c061f3feca5c332e45acacd5e5a1c6b117"
+        },
+        {
+          "path": "src/bafu_community_fixes/data/README.md",
+          "sha256": "1f6d0cbb789edc50bf0b788ea142473220bb910a8c32ea6da32c05a9c348d3f5"
+        },
+        {
+          "path": "src/bafu_community_fixes/data/__init__.py",
+          "sha256": "d20b20c375ccbaa174cf93dc9d5c23fc63d6389daa3d3960f20c6e864ed786b5"
+        },
+        {
+          "path": "src/bafu_community_fixes/data/brightway-flows-corrections-bafu-2026-v1.json",
+          "sha256": "107582860aaee25e1e6de327681abcf48f742910bbec6f4aefd1893e9dab3048"
+        },
+        {
+          "path": "src/bafu_community_fixes/data/brightway-flows-crosswalk-bafu-2026-v1.csv",
+          "sha256": "e9985eedbe6ffda81f1c2eaa9ce40442b88c3f278a86fb31fe8366590aa1347b"
+        },
+        {
+          "path": "src/bafu_community_fixes/download.py",
+          "sha256": "eb1ff4b0c878b3fe382780210ee18dc679b1f8f3d68118a3fc78e57cce9136b0"
+        },
+        {
+          "path": "src/bafu_community_fixes/import_fixes.py",
+          "sha256": "157874dd2f12aaecda622924c41c26f4de1b03d0250a1f65e2db5912f38bf7c2"
+        },
+        {
+          "path": "src/bafu_community_fixes/models.py",
+          "sha256": "2407b2e33feab1c3cdcdf238d11ab5866a5f4bd2a6dfe99e07df70c019c300a9"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/__init__.py",
+          "sha256": "a56469d8eef953f449a25242b772b35d884d3a1f460274f830c2536a596f19b6"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0001_strawberry_polyethylene_disposal.py",
+          "sha256": "2bb74cb104cfeaf6560def67fb5cea0723a55358c14ba8429763d781dc0131ee"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0002_supplier_locations.py",
+          "sha256": "79b13e9b7706a18a1bfd5ea615eba2227ee0ff6590ac0b232fe5e4a1307e773d"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0003_flag_not_maintained.py",
+          "sha256": "13a12931a4ed7d32d77ae9d1e1d8762eb5e477b65978b567a14f1b5cf99a96dd"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0004_flow_cas_numbers_added.py",
+          "sha256": "c03eeeee2e77e28e24ecc760d3c2c418bd28dc7c7a248cf765e8b3aa19e5377f"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0005_flow_cas_numbers_replaced.py",
+          "sha256": "a697a0d7014baf06005c7904734350e3f3639fe9e50d3331bd219374bee7a02f"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0006_flow_cas_numbers_removed.py",
+          "sha256": "cf74257e7432cdf5e2388f0d421af78f81fd31ef33eb3279b8dd506cf98c6e03"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0007_flow_names.py",
+          "sha256": "29f8774f52a49e787eeb34a1c3cf75b24ef11e068047ff7ca704d98a8afa6c98"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0008_flow_compartments.py",
+          "sha256": "272718335f4353637e13ac0413c70ccd74413db88219d4ef7d9ebc59dbee8631"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0009_consistent_cas_numbers.py",
+          "sha256": "0cb08a6965b6c8fbfad07ecdb8dd101249c06606f2cc41cbd3488ae7aab9fc26"
+        },
+        {
+          "path": "src/bafu_community_fixes/patches/p0010_brightway_flows_links.py",
+          "sha256": "f37bbc250616ed8b4aaa2b0af3d9f86b99429380b53b362e059f948fe7f022b4"
+        },
+        {
+          "path": "src/bafu_community_fixes/pipeline.py",
+          "sha256": "58ea1c9bca6ca5c71a34a0c397c1fb5676d497b1a402685478bf4b05de26628c"
+        },
+        {
+          "path": "src/bafu_community_fixes/progress.py",
+          "sha256": "f53b5f3071be02c2d418e9f6dfbbd7e5443fffe908d4701b3e002e85d5d173a7"
+        },
+        {
+          "path": "src/bafu_community_fixes/py.typed",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "src/bafu_community_fixes/registry.py",
+          "sha256": "ebc4c8a780e057c4469ee43b42f7a0369b35aef83fe8730c9fe87b259eb4e355"
+        },
+        {
+          "path": "src/bafu_community_fixes/report.py",
+          "sha256": "f18ae320ea6c42a7d701c9fa5d031e644302d943187572686626bda53960d773"
+        },
+        {
+          "path": "src/bafu_community_fixes/report_assets/Rubik-OFL.txt",
+          "sha256": "5237f9509bd642a00c8448ac4004481db7cf550f440cf2aa3c43fbe2dfbf2fac"
+        },
+        {
+          "path": "src/bafu_community_fixes/report_assets/Rubik-VariableFont_wght.ttf",
+          "sha256": "c64f09f2590fecfb8989ba83e5fee9a34e8eb1fa762177c0bc55c17e3faf4a2b"
+        },
+        {
+          "path": "src/bafu_community_fixes/report_assets/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "src/bafu_community_fixes/report_assets/sentier-logo.svg",
+          "sha256": "7edd73c181a15cc6dec77c6903d0c2228ebeb5007b014945a9fd471317f635b3"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01DataTypes.xsd",
+          "sha256": "780b626010b0c01a954aa2061551efd13e62d31089fc46d5f7f546b24a36d522"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01Dataset.xsd",
+          "sha256": "1139b6a25818b313bc87b8e9ab7ed5617a03cf0097644b5b6950e0ed26887651"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01FlowData.xsd",
+          "sha256": "a481f78031cf3eae409ab474c25bba1a67aeab9283e188af733bf73fd0e531b6"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/ecospold1/EcoSpold01MetaInformation.xsd",
+          "sha256": "06179033857f2c17bfa64089fb100f8aa27b11b47413b5007fb7a49b3a9958ae"
+        },
+        {
+          "path": "src/bafu_community_fixes/schemas/ecospold1/README.md",
+          "sha256": "cace330de03525b2289f7d9470757375b159fb9918dddb2720021c38a3d75bfb"
+        },
+        {
+          "path": "src/bafu_community_fixes/templates/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "src/bafu_community_fixes/templates/report.html.j2",
+          "sha256": "06f4b93d2e489a74208f95cf2f5dcc8e44978cdb44556a32d368c534dbbe8f98"
+        },
+        {
+          "path": "src/bafu_community_fixes/tui.py",
+          "sha256": "2aa8fa73859df92a429dc17df53ed98df8deda8ac2528d1e6959b6a4ba5a31ff"
+        },
+        {
+          "path": "src/bafu_community_fixes/tui.tcss",
+          "sha256": "f4e7782857c3138dac8e11d9f5dafbbdc6588b81bf94f2850f941bde09a5be36"
+        },
+        {
+          "path": "src/bafu_community_fixes/xml.py",
+          "sha256": "b4bf4d9a92a5a450ca5ecaf78b5e0b6fbc17617c1c28162d184d0eeee66c641d"
+        },
+        {
+          "path": "src/bafu_community_fixes/xsd.py",
+          "sha256": "0e332126560d90cfe511a12ab3efdeef91a65fdf910188cc5a2968bb7bfbfd6e"
+        },
+        {
+          "path": "tests/conftest.py",
+          "sha256": "991af2858522b4770a25b84eb61d358fee04e6f98b41a345e4677ed1ac3c3325"
+        },
+        {
+          "path": "tests/fixtures/raw_bafu.xml",
+          "sha256": "fc5845e349a519b1540942af919e309106fbf8add31f2e6e40aafd79da1b8d62"
+        },
+        {
+          "path": "tests/test_bafu_release.py",
+          "sha256": "d158a4c3297eb211021c4609307e3262e8142836f169b309e80a0319e146ea8f"
+        },
+        {
+          "path": "tests/test_download.py",
+          "sha256": "6fb6c1fd6898d5ece659d9dc04c3d8e735cc896d33c69c8ab80e51bb7979bbcc"
+        },
+        {
+          "path": "tests/test_import_fixes.py",
+          "sha256": "5669bad61301fc288b5651f3effe1c0560f05378c77aa51a41e9f3931d1cd625"
+        },
+        {
+          "path": "tests/test_models.py",
+          "sha256": "9b1616cd5e0fbe5290a006135461a71a0296d8f26a34eb04255c703750dbe2a9"
+        },
+        {
+          "path": "tests/test_patches.py",
+          "sha256": "868d7a669e32eafe6b82e51592bdc1ff4c27270c177ff7293904edcba53e7aec"
+        },
+        {
+          "path": "tests/test_pipeline.py",
+          "sha256": "7e69c28174b79b720476c2c3b97053c0fef8747eb23a2601659d74ff8adf14f0"
+        },
+        {
+          "path": "tests/test_report.py",
+          "sha256": "5d9f5b475f98ac782bc0a2f9d4b1e7ce49801dc39332e291808464abf5f11dd6"
+        },
+        {
+          "path": "tests/test_tui.py",
+          "sha256": "472c31598bbb0d5b95974aff4e02ec56447aa185dab8f27b3bc738fc61a66ce6"
+        },
+        {
+          "path": "tests/test_xml.py",
+          "sha256": "a4cab5836529f6cd8a73f593aefceb6c6da7d6a38cbf9f0b8e04ac9d92338b5b"
+        },
+        {
+          "path": "tests/test_xsd.py",
+          "sha256": "e1e81aff9d752a79c8d3ed61fd9e0025af6657ad06bfbf010ba39d0c470f0123"
+        },
+        {
+          "path": "uv.lock",
+          "sha256": "3a21f5ee4665a900a73ef536b76df1a478140e1595df6e8dccd86dd786c7b58e"
+        }
+      ]
+    }
+  },
+  "collisions": [
+    ".gitignore",
+    "LICENSE",
+    "README.md"
+  ]
+}

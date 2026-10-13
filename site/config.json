@@ -52,6 +52,11 @@
       "title": "Data & attribution",
       "source": "docs/terms-of-use.md",
       "page": "terms.html"
+    },
+    {
+      "title": "Community migration plan",
+      "source": "docs/plans/bafu-community/README.md",
+      "page": "roadmap.html"
     }
   ]
 }
