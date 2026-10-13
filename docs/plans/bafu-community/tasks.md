@@ -7,8 +7,8 @@ not a reason to stop independent design or evidence work.
 |---|---|---|---|
 | T1 Preserve the community pipeline in an integration PR | Both histories, unchanged package interfaces, fixture parity and complete file disposition | None | Laurenz; extends community-fixes #1 |
 | T2 Demonstrate the strawberry correction review journey | Clickable fixture-based home → correction → evidence → original issue, with distinct status dimensions | None; use pinned community source while T1 proceeds | Laurenz |
-| T3 Publish a versioned safe review snapshot | Pipeline run → validated public metadata → deterministic Pages build, including failure and sampled-coverage states | None; evidence reconciliation can proceed independently | Unassigned |
-| T4 Reconcile the finding ledger and partner evidence | F1/F3/F11 connected to patches; C001/C002 and dissent retained; queue backed by real records | T1 | Unassigned |
+| T3 Publish a versioned safe review snapshot | Pipeline run → validated public metadata → deterministic Pages build, including failure and sampled-coverage states | T1 | Unassigned |
+| T4 Reconcile the finding ledger and partner evidence | F1/F3/F11 connected to patches; C001/C002 and dissent retained; queue backed by real records | None; evidence reconciliation can proceed independently | Unassigned |
 | T5 Connect patched output to Sentier inventory | Existing assignment: pinned patched XML → import → checked inventory with provenance and no double application | T1; coordinate in existing community-fixes #2 | Laurenz's existing assignment |
 | T6 Extend the prototype into correction search and review | Search/filter/detail/run pages driven by the safe snapshot, stable links and accessible states | T2, T3, T4 | Unassigned |
 | T7 Receive reusable findings into Consensus Flows | One public, source-qualified reproduction → upstream module PR → release/adoption tracking; preserve remaining intake | T4; upstream releases may gate adoption separately | Unassigned |
