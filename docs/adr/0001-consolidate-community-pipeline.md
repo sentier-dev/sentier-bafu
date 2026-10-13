@@ -3,8 +3,9 @@ status: accepted
 ---
 # Preserve the community pipeline in the consolidated repository
 
-Consolidate the two repositories into BAFU Community, preserving both Git
-histories. The user explicitly selected `bafu-community-fixes` as authoritative
+Consolidate the two repositories into one shared repository (working title:
+BAFU Community), preserving both Git histories. Chris and Laurenz will choose
+the final name. The user explicitly selected `bafu-community-fixes` as authoritative
 where implementation or interpretation conflicts. Its package, CLI/TUI,
 fourteen import fixes, ten patches, tests and report remain the executable
 foundation; the existing findings and contribution history remain the review

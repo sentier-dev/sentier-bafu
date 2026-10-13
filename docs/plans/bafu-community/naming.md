@@ -22,7 +22,8 @@ retain the existing repository and issue IDs, rather than create a replacement.
   repository ID and old/new URLs.
 - Update its description, homepage, current README, site config and local origin.
   Preserve historical evidence links where rewriting would change a pinned record.
-- Deploy Pages at `https://sentier-dev.github.io/bafu-community/`; verify home,
+- If renamed, deploy Pages under the selected repository name (for example,
+  `https://sentier-dev.github.io/bafu-community/`); verify home,
   import, findings and the already-shared `mapping-review.html` path there.
 - Check the old repository and issue redirects. Never recreate `sentier-bafu`.
 - GitHub [does not redirect project Pages URLs on rename](https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository).

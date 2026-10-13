@@ -12,7 +12,8 @@ not a reason to stop independent design or evidence work.
 | T5 Connect patched output to Sentier inventory | Existing assignment: pinned patched XML → import → checked inventory with provenance and no double application | T1; coordinate in existing community-fixes #2 | Laurenz's existing assignment |
 | T6 Extend the prototype into correction search and review | Search/filter/detail/run pages driven by the safe snapshot, stable links and accessible states | T2, T3, T4 | Unassigned |
 | T7 Receive reusable findings into Consensus Flows | One public, source-qualified reproduction → upstream module PR → release/adoption tracking; preserve remaining intake | T4; upstream releases may gate adoption separately | Unassigned |
-| T8 Verify cutover and retire duplicate entry points | Full local release parity, inventory receiving, site checks, contributor handoff and rollback proof | T3, T4, T5, T6 | Maintainers |
+| T8 Verify cutover and retire duplicate entry points | Full local release parity, inventory receiving, site checks, contributor handoff and rollback proof | T3, T4, T5, T6, T9 | Maintainers |
+| T9 Choose the project name | Chris/Laurenz select or retain a name and record the URL cutover decision | None; does not block T1/T2 | Chris and Laurenz |
 
 T5 already exists as [community-fixes #2](https://github.com/sentier-dev/bafu-community-fixes/issues/2).
 Do not create a second implementation issue for it. T1 adds the concrete parity
