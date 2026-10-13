@@ -2,10 +2,12 @@
 
 Existing assignment confirmed from Chris's public issues: GitHub user
 **[lbougan](https://github.com/lbougan)** owns community-fixes #1 and #2.
-This plan recommends starting the following two bounded tasks. It does not
+The following two bounded tasks are assigned to Laurenz. This does not
 promise availability or claim Laurenz has accepted a deadline.
 
 ## First: preserve the working pipeline
+
+[Implementation issue #19](https://github.com/sentier-dev/sentier-bafu/issues/19).
 
 Prepare an integration PR from the pinned community implementation, preserving
 both histories and the existing package/CLI/namespace. Attach the source-file
@@ -15,6 +17,8 @@ caused only by run time, path or revision. Keep inventory wiring in the existing
 community-fixes #2; do not combine it into this initial move.
 
 ## Second: make one correction easy to review
+
+[Prototype issue #20](https://github.com/sentier-dev/sentier-bafu/issues/20).
 
 Build a clickable prototype around **F1 / patch 0001 / dataset 188725** using
 public patch metadata and explicitly identified fixture or illustrative content.
