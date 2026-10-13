@@ -45,6 +45,14 @@ A candidate method still needs its own application and reproduction checks.
 Source-code fixes to our importer can proceed independently of a provider’s
 decision about an official distribution.
 
+## Aggregated dataset list
+
+The [F8 source list and counting criteria](findings.md#f8-the-list-behind-the-37-unflagged-candidates)
+identify the 37 unflagged structural candidates, including their UUIDs. The
+hackathon separately reports 22 of those candidates rebuilt. These counts
+describe different stages; a comparison with another search should use the
+dataset identifiers.
+
 ## Why this page remains
 
 The existing `mapping-review.html` URL stays useful for links already shared.

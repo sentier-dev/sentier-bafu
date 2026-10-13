@@ -41,6 +41,37 @@ linked issues. Dataset values and names are quoted freely; text from the LCI
 | F10 | 196588 Disposal, rectangular straw bale | flagged type=2 but carries only its production exchange — a cumulative LCI with no flows; the two straw-bale siblings carry 1,656 flows each. | 2026 v1 | open | [#3](https://github.com/sentier-dev/sentier-bafu/issues/3) · [#11](https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/11) |
 | F11 | 1,289 datasets named `xx …` / `xxx …` | retired by name prefix and/or category words (`obsolete`: 803, `notMaintained`: 441, current category: 45; 57 `obsolete` datasets carry no prefix). The convention is undocumented; consumers that match by name anchor on retired datasets unknowingly. | 2026 v1 | open | [#4](https://github.com/sentier-dev/sentier-bafu/issues/4) · [#15](https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/15) |
 
+## F8: the list behind the 37 unflagged candidates
+
+The hackathon's [extended dataset list](https://github.com/LouisFreboeuf/brightcon-hacktlon_reverse-engineering-bafu/blob/f4784965c12b82f2731e7cdcd696c11afaf434a6/results/system_terminated_extended.csv)
+contains **37 distinct dataset UUIDs with `detected_by=structure`**. Each row
+provides its name, location, unit, input count and elementary-flow count. This
+subset includes four names prefixed `xx`; excluding those gives 33, not 22.
+
+The [detection script](https://github.com/LouisFreboeuf/brightcon-hacktlon_reverse-engineering-bafu/blob/f4784965c12b82f2731e7cdcd696c11afaf434a6/scripts/find_system_processes.py)
+selects datasets outside the flagged list with more than 50 elementary exchanges
+and no production-supply inputs after excluding waste-treatment services and
+infrastructure inputs measured in `unit`. It also excludes emission-only,
+disposal, discharge, provision and resource-correction activities by name.
+These are structural candidates; the rule and source generation matter when
+comparing another search.
+
+The table contains 101 flagged rows plus these 37 structural rows, for 138 total.
+The separate 102nd flagged dataset, `196588 Disposal, rectangular straw bale`,
+is omitted from that survey because it has no elementary-flow vector (F10).
+
+The hackathon's [rebuild documentation](https://github.com/LouisFreboeuf/brightcon-hacktlon_reverse-engineering-bafu/blob/f4784965c12b82f2731e7cdcd696c11afaf434a6/exports/README.md#L415)
+reports **22 of the 37 rebuilt**, with 15 remaining. That 22 describes rebuild
+coverage. An independently identified set of 22 still needs a UUID comparison;
+equal counts do not establish that they are the same subset.
+
+Count provenance checked on 13 October 2026 against the published table at
+commit `f4784965c12b82f2731e7cdcd696c11afaf434a6`. This check verifies the list
+behind the reported count; it is not a new census of raw ecoSpold files, a
+validation of the reconstructed inventories, or an acceptance threshold for a
+current import. Continue the source comparison in
+[#3](https://github.com/sentier-dev/sentier-bafu/issues/3).
+
 ## Mapping import work with Chris
 
 [Mapping integration status](mutel-mapping-review.md) links the concrete importer
