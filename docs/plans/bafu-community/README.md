@@ -1,6 +1,7 @@
 # Consolidate BAFU Community
 
-Planning baseline: **13 October 2026**. This is the implementation plan; it does
+Planning baseline: **13 October 2026**. Project names are proposals for Chris
+and Laurenz; the repository remains `sentier-dev/sentier-bafu`. This is the implementation plan; it does
 not claim that the repositories, datasets or review workflows have already
 been merged.
 

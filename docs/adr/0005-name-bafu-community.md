@@ -1,9 +1,9 @@
 ---
-status: accepted
+status: proposed
 ---
 # Name the shared project BAFU Community
 
-Use `sentier-dev/bafu-community` for the consolidated repository. It describes
+Propose `sentier-dev/bafu-community` for the consolidated repository. It describes
 the source and participants while covering import, corrections, models,
 application testing and upstream recommendations. `bafu-community-fixes` is
 too narrow for unconfirmed findings and scenarios; `bafu-workbench` overlaps
@@ -15,5 +15,5 @@ numbers by renaming it, and do not recreate its old name: that would break
 GitHub's redirects. GitHub Pages URLs do not receive those redirects, so the
 site cutover and known external links are explicit work in the naming plan.
 
-Repository rename applied on 13 October 2026, preserving repository identity.
-Package identifiers are unchanged; implementation and site migration remain tracked work.
+Chris and Laurenz will select the name. No rename is authorized by this ADR;
+the repository remains `sentier-dev/sentier-bafu` until they decide.

@@ -1,7 +1,7 @@
 {
   "dataset": "BAFU / UVEK",
   "provider": "BAFU",
-  "repository": "https://github.com/sentier-dev/bafu-community",
+  "repository": "https://github.com/sentier-dev/sentier-bafu",
   "source_ref": "main",
   "description": "The public Sentier workspace for BAFU/UVEK imports, partner contributions, application tests, reviewed consensus and recommendations to BAFU.",
   "sibling_name": "AGRIBALYSE preview",

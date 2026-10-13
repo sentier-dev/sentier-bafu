@@ -1,5 +1,8 @@
 # Naming and URL cutover
 
+**Decision owner: Chris and Laurenz. No name selected yet.** The repository
+remains `sentier-dev/sentier-bafu`.
+
 Recommended display name: **BAFU Community**. Recommended repository:
 `sentier-dev/bafu-community`.
 
@@ -15,7 +18,7 @@ retain the existing repository and issue IDs, rather than create a replacement.
 
 ## Cutover checklist
 
-- Rename the repository once the chosen name is recorded; keep a receipt of the
+- Rename the repository only after Chris/Laurenz select and record the name; keep a receipt of the
   repository ID and old/new URLs.
 - Update its description, homepage, current README, site config and local origin.
   Preserve historical evidence links where rewriting would change a pinned record.
