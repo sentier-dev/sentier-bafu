@@ -35,7 +35,7 @@ retain the existing repository and issue IDs, rather than create a replacement.
   importer documentation and Element messages. Update repositories through their
   maintainers; old Element posts receive a short follow-up, not silent editing.
 - A custom domain is a possible later durability improvement, requiring domain
-  owner participation. It is not a prerequisite for starting Laurenz's tasks.
+  owner participation. It is not a prerequisite for the pipeline or prototype work.
 - Preserve distribution/import/CLI names and the XML extension namespace.
 - On failure, restore the old repository name and homepage, rerun Pages and
   verify the previous site. Do not delete either repository as cleanup.

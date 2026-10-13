@@ -11,11 +11,11 @@ This public Sentier project connects partner evidence, Brightcon hackathon work,
 ## Consolidating the community work
 
 The [migration and UX plan](docs/plans/bafu-community/README.md) brings the
-working [community-fixes pipeline](https://github.com/sentier-dev/sentier-bafu-fixes)
+working [community-fixes pipeline](https://github.com/sentier-dev/bafu-community-fixes)
 and this evidence workspace together. Community-fixes is authoritative where
 they conflict. Its package and commands stay stable; migration parity and the
 new review experience are tracked as separate tasks. The pipeline has not yet
-been merged into this repository. See [Laurenz's first two tasks](docs/plans/bafu-community/laurenz.md)
+been merged into this repository. See the [implementation task briefs](docs/plans/bafu-community/task-briefs.md)
 and the [architecture decisions](docs/adr/).
 
 ## Start with the import

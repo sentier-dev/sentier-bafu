@@ -73,5 +73,5 @@ an intake source, not a public dataset to copy wholesale.
 
 Repository rename is separate from package and namespace compatibility.
 Existing community-fixes issues #1 and #2 remain authoritative assignments.
-Tomorrow's checkpoint assesses progress and blockers, not completion of this
-entire specification.
+Issue numbering and technical dependencies do not prescribe priority or a
+schedule. Work allocation and follow-up remain with Chris and the contributors.

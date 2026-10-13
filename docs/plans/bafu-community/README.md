@@ -6,7 +6,7 @@ not claim that the repositories, datasets or review workflows have already
 been merged.
 
 Track implementation in [the parent issue #18](https://github.com/sentier-dev/sentier-bafu/issues/18).
-Laurenz's first two tasks are [pipeline preservation #19](https://github.com/sentier-dev/sentier-bafu/issues/19)
+The implementation issues include [pipeline preservation #19](https://github.com/sentier-dev/sentier-bafu/issues/19)
 and [the strawberry review prototype #20](https://github.com/sentier-dev/sentier-bafu/issues/20).
 Chris and Laurenz can record the naming decision in [#25](https://github.com/sentier-dev/sentier-bafu/issues/25).
 
@@ -20,8 +20,8 @@ Sentier evidence and discussions around it.
 1. [Migration inventory and conflict decisions](migration.md).
 2. [UX investigation and proposed user journeys](ux-review.md).
 3. [Product and validation specification](spec.md).
-4. [Task sequence and dependencies](tasks.md).
-5. [Laurenz's first two tasks and tomorrow's review](laurenz.md).
+4. [Tasks and technical dependencies](tasks.md).
+5. [Implementation task briefs](task-briefs.md).
 6. [Naming and URL cutover](naming.md).
 
 The [ADRs](../../adr/) record repository ownership, flow identity, publication,
@@ -56,6 +56,6 @@ results establish a fixture baseline, not full-release parity or LCIA accuracy.
 - Knowledge and unresolved cases survive; reusable flow findings have an
   upstream issue/PR and a verified release path.
 
-The first two tasks can start independently. Full migration, inventory wiring
-and the complete UX are not promised for tomorrow; tomorrow is a review of
-concrete branches, test output, a demonstrable user journey and blockers.
+The issues describe scope, acceptance evidence and technical dependencies.
+They carry no priority, deadline or new assignment. Chris decides how to
+coordinate work and whether to follow up with Laurenz.
