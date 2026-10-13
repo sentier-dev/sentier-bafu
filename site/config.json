@@ -1,7 +1,7 @@
 {
   "dataset": "BAFU / UVEK",
   "provider": "BAFU",
-  "repository": "https://github.com/sentier-dev/sentier-bafu",
+  "repository": "https://github.com/sentier-dev/bafu-community",
   "source_ref": "main",
   "description": "The public Sentier workspace for BAFU/UVEK imports, partner contributions, application tests, reviewed consensus and recommendations to BAFU.",
   "sibling_name": "AGRIBALYSE preview",
@@ -52,6 +52,11 @@
       "title": "Data & attribution",
       "source": "docs/terms-of-use.md",
       "page": "terms.html"
+    },
+    {
+      "title": "Community migration plan",
+      "source": "docs/plans/bafu-community/README.md",
+      "page": "roadmap.html"
     }
   ]
 }
