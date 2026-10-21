@@ -44,7 +44,8 @@ processes. Water use, cancer toxicity, ecotoxicity and marine eutrophication
 do not; 1.1 % of processes agree within ±1 % in all 25. Two of the
 divergences are in BAFU's workbook rather than this route: the FI gas
 electricity label error ([#28](https://github.com/sentier-dev/sentier-bafu/issues/28))
-and what look like swapped ecotoxicity sub-indicator columns. sentier-brightway
+and the swapped ecotoxicity sub-indicator columns
+([#35](https://github.com/sentier-dev/sentier-bafu/issues/35)). sentier-brightway
 #4 changes no score. This baseline is not C002's reproduction.
 
 These fixes do not turn the current EF 3.1 bridge into a consumer of the

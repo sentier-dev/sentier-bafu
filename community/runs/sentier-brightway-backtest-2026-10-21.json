@@ -536,8 +536,8 @@
     },
     {
       "what": "ecotoxicity freshwater inorganics/organics",
-      "cause": "BAFU's workbook columns appear swapped: our inorganics match BAFU's 'organics' (median ratio 1.0001); GreenDelta's EF 3.1 and JRC's carry plain-metal factors under inorganics. Proposed as a new finding; not yet re-measured by a second person.",
-      "evidence_url": "not yet filed"
+      "cause": "BAFU's workbook columns are swapped: our inorganics match BAFU's 'organics' (median ratio 1.0001). BAFU's own distributed EF 3.1 Method (adapted), GreenDelta's 2.8.2 package and JRC's EF 3.1 all carry the plain-metal factors under inorganics. Open finding F17, awaiting independent re-measurement.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35"
     },
     {
       "what": "ionising radiation, 23 processes at exactly ×1000",
