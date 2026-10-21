@@ -102,3 +102,56 @@ class ContributionTests(unittest.TestCase):
                 after.write_text(json.dumps(candidate))
                 with self.assertRaises(ValueError):
                     records.compare(before, after)
+
+
+class ReconciliationTests(unittest.TestCase):
+    def setUp(self):
+        self.reconciliation = records.read(ROOT / "community/reconciliation.json")
+        self.rows = records.ledger_rows((ROOT / "community/findings.md").read_text())
+        self.contributions = {
+            p.stem: records.read(p)["status"]
+            for p in (ROOT / "community/contributions").glob("*.json")
+        }
+
+    def errors(self):
+        return records.validate_reconciliation(self.reconciliation, self.rows, self.contributions)
+
+    def record(self, rid):
+        return next(r for r in self.reconciliation["records"] if r["id"] == rid)
+
+    def test_committed_reconciliation_matches_ledger(self):
+        self.assertEqual(self.errors(), [])
+
+    def test_status_drift_is_reported(self):
+        self.record("F1")["ledger_status"]["after"] = "open"
+        self.assertTrue(self.errors())
+
+    def test_patch_cannot_mark_a_finding_fixed(self):
+        self.rows["F1"]["status"] = "upstream-fixed"
+        self.record("F1")["ledger_status"]["after"] = "upstream-fixed"
+        self.assertTrue(self.errors())
+        self.record("F1")["provider_correction_shipped"] = {
+            "release": "BAFU:2027 v1",
+            "evidence_url": "https://example.org/release",
+        }
+        self.assertEqual(self.errors(), [])
+
+    def test_every_ledger_finding_needs_a_record(self):
+        self.rows["F99"] = {"status": "open", "links": set()}
+        self.assertTrue(self.errors())
+
+    def test_ledger_links_are_preserved(self):
+        self.rows["F2"]["links"].add("https://example.org/thread")
+        self.assertTrue(self.errors())
+
+    def test_open_record_needs_next_action_and_role(self):
+        self.record("F9")["review_role"] = "anyone"
+        self.assertTrue(self.errors())
+
+    def test_provider_response_needs_public_evidence(self):
+        self.record("F3")["provider_response"]["evidence_url"] = ""
+        self.assertTrue(self.errors())
+
+    def test_contribution_status_follows_its_record(self):
+        self.contributions["C002"] = "accepted"
+        self.assertTrue(self.errors())

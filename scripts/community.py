@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import re
 import sys
 
 STATES = {"proposed", "testing", "reviewing", "accepted", "rejected", "superseded"}
@@ -132,6 +133,75 @@ def validate(record):
     return errors
 
 
+FINDING_STATES = {
+    "open",
+    "upstream-reported",
+    "upstream-fixed",
+    "informational",
+    "handled-in-layer",
+    "withdrawn",
+}
+ROLES = {"data user", "partner", "reviewer", "maintainer", "flow curator", "importer maintainer"}
+
+
+def ledger_rows(text):
+    rows = {}
+    for line in text.splitlines():
+        if line.startswith("| F"):
+            cells = [c.strip() for c in line.strip().strip("|").split(" | ")]
+            rows[cells[0]] = {"status": cells[4], "links": set(re.findall(r"\((https://[^)]+)\)", cells[5]))}
+    return rows
+
+
+def validate_reconciliation(reconciliation, rows, contributions):
+    errors, seen = [], set()
+    for r in reconciliation["records"]:
+        rid = r["id"]
+        if rid in seen:
+            errors.append(f"{rid}: duplicate reconciliation record")
+        seen.add(rid)
+        after = r["ledger_status"]["after"]
+        if r["kind"] == "finding":
+            row = rows.get(rid)
+            if not row:
+                errors.append(f"{rid}: not in the findings ledger")
+                continue
+            if after not in FINDING_STATES:
+                errors.append(f"{rid}: invalid status {after}")
+            if after != row["status"]:
+                errors.append(f"{rid}: ledger says {row['status']}, reconciliation says {after}")
+            if row["links"] - set(r["links"]):
+                errors.append(f"{rid}: ledger links missing from reconciliation")
+        elif r["kind"] == "contribution":
+            if rid not in contributions or contributions[rid] != after:
+                errors.append(f"{rid}: contribution status differs from its record")
+        # A patch or a provider confirmation never closes a finding; only a shipped release does.
+        shipped = r["provider_correction_shipped"]
+        if after == "upstream-fixed" and not shipped:
+            errors.append(f"{rid}: upstream-fixed needs a shipped provider correction")
+        if shipped and not (shipped.get("release") and shipped.get("evidence_url")):
+            errors.append(f"{rid}: shipped correction needs a release and evidence")
+        patch = r["community_patch"]
+        if patch and not (patch.get("url") and patch.get("authorisation", {}).get("evidence_url")):
+            errors.append(f"{rid}: patch needs a pinned url and authorisation evidence")
+        provider = r["provider_response"]
+        if provider and not all(provider.get(k) for k in ("by", "date", "public_summary", "evidence_url")):
+            errors.append(f"{rid}: provider response needs who, when, a public summary and evidence")
+        if after not in {"withdrawn", "upstream-fixed"} and not (
+            r["next_action"] and r["review_role"] in ROLES and r["evidence_url"]
+        ):
+            errors.append(f"{rid}: open record needs a next action, review role and evidence")
+    for rid in set(rows) - seen:
+        errors.append(f"{rid}: ledger finding has no reconciliation record")
+    for rid in set(contributions) - seen:
+        errors.append(f"{rid}: contribution has no reconciliation record")
+    patched = {f for p in reconciliation["patches"] for f in p["findings"]}
+    for r in reconciliation["records"]:
+        if r["community_patch"] and r["id"] not in patched:
+            errors.append(f"{r['id']}: patch not listed under patches")
+    return errors
+
+
 def check(root):
     errors, records = [], {}
     for path in sorted((root / "community/contributions").glob("*.json")):
@@ -157,10 +227,17 @@ def check(root):
             errors.append("sent recommendation needs delivery evidence")
         if state in {"acknowledged", "resolved"} and not packet.get("response_url"):
             errors.append("provider response needs evidence")
+    rows = ledger_rows((root / "community/findings.md").read_text())
+    errors += validate_reconciliation(
+        read(root / "community/reconciliation.json"),
+        rows,
+        {k: v["status"] for k, v in records.items()},
+    )
     print(
         "\n".join(errors)
         if errors
-        else f"Validated {len(records)} contribution records and recommendation references."
+        else f"Validated {len(records)} contribution records, recommendation references "
+        f"and the reconciliation of {len(rows)} findings."
     )
     return int(bool(errors))
 
