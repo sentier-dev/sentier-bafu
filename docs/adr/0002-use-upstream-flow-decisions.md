@@ -1,7 +1,7 @@
 ---
-status: accepted
+status: proposed
 ---
-# Keep elementary-flow decisions in Consensus Flows
+# Keep elementary-flow decisions in Brightway Flows
 
 The community pipeline already consumes pinned Brightway Flows corrections
 and a crosswalk. Keep that as the common identity authority and contribute
@@ -18,3 +18,7 @@ remain intact until a reviewed upstream refresh changes them.
 Local triangulation knowledge is migrated as evidence and reproductions, then
 focused module PRs. It becomes active behavior only through a verified containing
 release and consumer validation. Unknown conversions stay unknown.
+
+Laurenz Bougan agreed with the content on 14 October 2026. It stands as
+accepted once Chris Mutel confirms it in
+[#18](https://github.com/sentier-dev/sentier-bafu/issues/18).

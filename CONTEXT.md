@@ -32,6 +32,7 @@ release, locator, name, context and unit even when corrected attributes differ.
 
 **Consensus flow**: The versioned elementary-flow identity supplied by Brightway
 Flows. Correspondence strength alone does not establish a quantity conversion.
+_Avoid_: "Consensus Flows" as the project's name; the project is Brightway Flows.
 
 **Community authorisation**: A named person's recorded approval to include a
 patch in a community release. _Avoid_: provider approval, scientific consensus.

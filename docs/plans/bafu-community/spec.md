@@ -10,7 +10,7 @@ Consolidation must preserve prior work and give contributors a clear path.
 ## Solution
 
 One source-specific project combines the authoritative community pipeline with
-the retained findings and a review site inspired by Consensus Flows. Users can
+the retained findings and a review site inspired by Brightway Flows. Users can
 reproduce a run, inspect corrections, contribute evidence and trace decisions
 back to their original sources and forward to upstream adoption.
 
@@ -65,8 +65,8 @@ fixture success cannot stand in for it.
 
 No new matching engine, blanket acceptance of historical hypotheses, public
 raw-data mirror, new provider endorsement, full LCIA migration, or completed
-reconstruction of the 37 aggregated candidates. The wider LCI Workbench
-Consensus Flows rollout continues separately; its private 53-entry review is
+reconstruction of the 37 aggregated candidates. The wider rollout of
+Brightway Flows in LCI Workbench continues separately; its private 53-entry review is
 an intake source, not a public dataset to copy wholesale.
 
 ## Further notes

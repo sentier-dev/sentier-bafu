@@ -14,7 +14,7 @@ or evidence from user interviews.
 
 | Observed reference pattern | BAFU experience | Deliberate adaptation |
 |---|---|---|
-| Direct lookup and concrete examples on the home page | Search a dataset number, name, finding or patch; start with strawberries, supplier locations and maintenance | Dataset and correction are the primary objects; chemistry stays linked to Consensus Flows |
+| Direct lookup and concrete examples on the home page | Search a dataset number, name, finding or patch; start with strawberries, supplier locations and maintenance | Dataset and correction are the primary objects; chemistry stays linked to Brightway Flows |
 | Stable detail pages with identity first | Release + dataset number, source/candidate distinction, patch IDs and related findings before technical details | Do not imply a source dataset is a consensus elementary flow |
 | Changes filtered by step/field, with before, after and reason | Patch detail shows rationale, scope, bounded before/after examples and linked run | Clearly mark samples; distinguish unavailable from unchanged |
 | Decision queues distinguish blocking/review/info | Queue by next action: needs reproduction, patch review, missing evidence, provider response | Execution severity and scientific judgement remain distinct; a warning is not automatically bad data |
@@ -65,7 +65,7 @@ Candidate routes: `corrections.html`, `patches/0001-strawberry-polyethylene-disp
    Updating that revision makes old approval visibly stale.
 4. **Maintainer:** run fails or is cancelled → report with diagnostic scope →
    affected step → issue. A failed run never appears as an accepted release.
-5. **Flow curator:** BAFU observation → pinned Consensus Flows decision → scoped
+5. **Flow curator:** BAFU observation → pinned Brightway Flows decision → scoped
    reproduction and upstream PR → verified containing release → consumer check.
 
 ## Page contract for a correction

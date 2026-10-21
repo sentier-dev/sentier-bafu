@@ -1,6 +1,7 @@
 # Migration inventory and conflict decisions
 
-The user selected community-fixes as authoritative on conflicts. Preserve its
+Manuel Klarmann chose community-fixes as authoritative on conflicts
+(13 October 2026). Preserve its
 executable behavior first, then add capabilities in separately reviewed changes.
 The machine-readable [inventory](source-inventory.json) hashes all **64 + 52**
 tracked source files. Only `.gitignore`, `LICENSE` and `README.md` overlap;

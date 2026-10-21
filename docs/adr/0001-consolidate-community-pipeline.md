@@ -1,13 +1,13 @@
 ---
-status: accepted
+status: proposed
 ---
 # Preserve the community pipeline in the consolidated repository
 
 Consolidate the two repositories into one shared repository (working title:
 BAFU Community), preserving both Git histories. Chris and Laurenz will choose
-the final name. The user explicitly selected `bafu-community-fixes` as authoritative
-where implementation or interpretation conflicts. Its package, CLI/TUI,
-fourteen import fixes, ten patches, tests and report remain the executable
+the final name. On 13 October 2026 Manuel Klarmann chose `bafu-community-fixes`
+as authoritative where implementation or interpretation conflicts. Its package,
+CLI/TUI, fourteen import fixes, ten patches, tests and report remain the executable
 foundation; the existing findings and contribution history remain the review
 record. This avoids maintaining two competing patch engines.
 
@@ -21,3 +21,7 @@ migration and resolve its two existing assignments.
 The initial history-preserving merge is behavior-preserving. New review
 capabilities arrive in separate changes after parity. The migration matrix
 records every file and every deliberate reconciliation.
+
+Laurenz Bougan agreed with the content on 14 October 2026. It stands as
+accepted once Chris Mutel confirms it in
+[#18](https://github.com/sentier-dev/sentier-bafu/issues/18).

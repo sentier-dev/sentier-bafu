@@ -12,7 +12,7 @@ Chris and Laurenz can record the naming decision in [#25](https://github.com/sen
 
 The goal is one place to run community corrections, inspect exactly what they
 do, review partner evidence and return useful recommendations to BAFU and
-Consensus Flows. Preserve the working community pipeline and bring the existing
+Brightway Flows. Preserve the working community pipeline and bring the existing
 Sentier evidence and discussions around it.
 
 ## Read in this order

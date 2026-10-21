@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: proposed
 ---
 # Preserve independent authorisation and evidence states
 
@@ -17,3 +17,15 @@ the older open wording without claiming a new official BAFU release.
 Preserve rejected, withdrawn, superseded and unresolved findings. Change an
 interpretation with a dated evidence link and explanation rather than replacing
 the historical statement silently.
+
+These states need one record schema across the repositories, not a fourth
+one: review status is already recorded as `Provenance` in community-fixes,
+`contribution.json` here and the review records of Brightway Flows. The
+proposal is to reuse the W3C PROV record shapes Brightway Flows uses (each
+status an activity with an agent and a date), reusing the shape rather than
+the code. The choice is a sub-task of
+[#21](https://github.com/sentier-dev/sentier-bafu/issues/21).
+
+Laurenz Bougan agreed with the content on 14 October 2026. It stands as
+accepted once Chris Mutel confirms it in
+[#18](https://github.com/sentier-dev/sentier-bafu/issues/18).

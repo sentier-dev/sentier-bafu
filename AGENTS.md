@@ -17,8 +17,7 @@ Engineering readiness is separate from finding status. See
 ### Domain docs
 
 One glossary in `CONTEXT.md`; decisions in `docs/adr/`. Read
-`docs/agents/domain.md` when changing either. Matt skill setup and installed
-versions are recorded in `docs/agents/skills.md`.
+`docs/agents/domain.md` when changing either.
 
 ## Migration invariants
 
