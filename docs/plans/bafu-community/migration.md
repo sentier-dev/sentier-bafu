@@ -12,8 +12,8 @@ the two MIT licence files are already byte-identical.
 | Existing material | Destination and treatment | Acceptance |
 |---|---|---|
 | Community package, strict models, XML reader/writer, registry, download/cache | Keep the original package tree and Python ≥3.14 requirement at the consolidated root | Every original file accounted for; public interfaces unchanged |
-| 14 ordered import fixes | Preserve IDs, order, rules, placeholders, provenance and conventions | Same fixture outputs; missing-data handling remains disclosed |
-| Patches 0001–0010 | Preserve IDs, decorators, rationale, attribution, selection and fail-fast expectations | Existing tests pass; no renamed or silently rewritten patch |
+| 14 ordered import fixes (`renumber-exchanges` changed 18 October, #6: keeps BAFU exchange numbers) | Preserve IDs, order, rules, placeholders, provenance and conventions | Same fixture outputs; missing-data handling remains disclosed |
+| Patches 0001–0011 (0011 added 15 October, #5) | Preserve IDs, decorators, rationale, attribution, selection and fail-fast expectations | Existing tests pass; no renamed or silently rewritten patch |
 | 53 Brightway corrections, 26 exclusions, crosswalk, rebuild script | Keep pinned source identities, checksums, aliases and permission notice together | Same data hashes; exclusions remain visible; scoped permission portability confirmed before publication |
 | Report, embedded font/logo, TUI and styles | Keep the existing offline report and terminal workflow | CLI/TUI smoke tests; failure/cancellation report still works |
 | XSDs and bundled licences | Keep unchanged alongside package resources | Package installation includes schemas and notices |
@@ -41,8 +41,9 @@ the two MIT licence files are already byte-identical.
 ## Execution procedure
 
 1. Refresh both heads and enumerate all refs, open PRs, releases and issues.
-   At the planning baseline, community-fixes has two commits, only `main`, no
-   PRs, and two open issues assigned to Laurenz. Recheck this before merging.
+   At the planning baseline (13 October), community-fixes had two commits, only
+   `main`, no PRs, and two open issues assigned to Laurenz. By 21 October it had
+   12 commits and two merged PRs (#5, #6). Recheck this before merging.
 2. Record the cutover SHA with the community maintainers. Fetch both histories
    into an isolated integration branch; merge with unrelated histories allowed.
    Preserve the community commit as an ancestor; do not squash it into an

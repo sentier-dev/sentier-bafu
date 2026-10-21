@@ -7,7 +7,7 @@ Consolidate the two repositories into one shared repository (working title:
 BAFU Community), preserving both Git histories. Chris and Laurenz will choose
 the final name. On 13 October 2026 Manuel Klarmann chose `bafu-community-fixes`
 as authoritative where implementation or interpretation conflicts. Its package,
-CLI/TUI, fourteen import fixes, ten patches, tests and report remain the executable
+CLI/TUI, import fixes, patches, tests and report remain the executable
 foundation; the existing findings and contribution history remain the review
 record. This avoids maintaining two competing patch engines.
 

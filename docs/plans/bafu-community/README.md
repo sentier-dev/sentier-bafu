@@ -1,4 +1,4 @@
-# Consolidate BAFU Community
+# Consolidate the BAFU community work
 
 Planning baseline: **13 October 2026**. Project names are proposals for Chris
 and Laurenz; the repository remains `sentier-dev/sentier-bafu`. This is the implementation plan; it does
@@ -37,11 +37,14 @@ in both pinned repositories.
 | [Existing workspace](https://github.com/sentier-dev/sentier-bafu/tree/87d14af) | See full commit in source inventory | 52 tracked files; findings F1–F11, C001/C002, evidence, checks and public site |
 | [Brightway Flows](https://github.com/brightway-labs/brightway-flows/tree/19d6cc6268e59e18fcbb47bfec0f440fb0f6a353) | `19d6cc6268e59e18fcbb47bfec0f440fb0f6a353` | Current upstream source; live home, queue, changes, flow detail and run pages inspected |
 
-Community baseline: **91 tests passed, 1 skipped** in 11.35 seconds using the
-locked environment. The skipped test requires the full provider archive. A
+Community baseline at the planning pin (`15bbfbb`, 13 October): **91 tests passed,
+1 skipped** in 11.35 seconds using the locked environment. The skipped test requires the full provider archive. A
 strict CLI run on the public fixture produced valid XML and a report covering
 one dataset, three exchanges, fourteen import fixes and ten patches. These
 results establish a fixture baseline, not full-release parity or LCIA accuracy.
+Since the pin, community-fixes merged patch 0011 (#5, 15 October) and kept
+BAFU's exchange numbers in `renumber-exchanges` (#6, 18 October), which changes
+the XML output. Re-baseline before the integration PR (#19).
 
 ## Completion means
 

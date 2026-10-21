@@ -1,4 +1,4 @@
-# BAFU Community specification
+# Consolidation specification
 
 ## Problem statement
 

@@ -5,17 +5,17 @@ remains `sentier-dev/sentier-bafu`.
 
 Record the choice in [decision issue #25](https://github.com/sentier-dev/sentier-bafu/issues/25).
 
-Recommended display name: **BAFU Community**. Recommended repository:
-`sentier-dev/bafu-community`.
+One proposal from the planning session: display name **BAFU Community**,
+repository `sentier-dev/bafu-community`.
 
 | Option | Assessment |
 |---|---|
-| BAFU Community | Source-specific and broad enough for import, patches, evidence, models and review; recommended. |
+| BAFU Community | Source-specific and broad enough for import, patches, evidence, models and review. |
 | BAFU Community Fixes | Existing package remains a good name; project scope also includes findings and proposals not yet accepted as fixes. The repository name is occupied by the source project, so this option needs an explicit custody/cutover agreement. |
 | BAFU Workbench | Suggests an interactive analysis product and overlaps with the existing LCI Workbench. |
 | Sentier BAFU | Existing links are familiar, but the project purpose is less clear. |
 
-Availability and admin access were checked on 13 October 2026. The rename must
+Recheck name availability before deciding. The rename must
 retain the existing repository and issue IDs, rather than create a replacement.
 
 ## Cutover checklist

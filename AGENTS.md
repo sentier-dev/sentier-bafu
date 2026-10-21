@@ -1,4 +1,4 @@
-# Working on BAFU Community
+# Working on sentier-bafu
 
 Read `CONTEXT.md` before changing domain language. For consolidation or review
 features, read `docs/plans/bafu-community/README.md` and the relevant `docs/adr/`.
@@ -21,7 +21,7 @@ One glossary in `CONTEXT.md`; decisions in `docs/adr/`. Read
 
 ## Migration invariants
 
-The pinned community-fixes implementation wins conflicting implementation
+These follow ADR 0001, which is still proposed. The pinned community-fixes implementation wins conflicting implementation
 choices. Preserve its history, interfaces, patch IDs, provenance and tests.
 Record disagreements and superseded interpretations; preserve C001/C002 and
 the original finding identifiers. Public site inputs are reviewed metadata.

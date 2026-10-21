@@ -1,9 +1,9 @@
 ---
 status: proposed
 ---
-# Name the shared project BAFU Community
+# Choose the project name
 
-Propose `sentier-dev/bafu-community` for the consolidated repository. It describes
+One proposal is `sentier-dev/bafu-community` for the consolidated repository. It describes
 the source and participants while covering import, corrections, models,
 application testing and upstream recommendations. `bafu-community-fixes` is
 too narrow for unconfirmed findings and scenarios; `bafu-workbench` overlaps
@@ -17,3 +17,6 @@ site cutover and known external links are explicit work in the naming plan.
 
 Chris and Laurenz will select the name. No rename is authorized by this ADR;
 the repository remains `sentier-dev/sentier-bafu` until they decide.
+
+It awaits the decision of Chris Mutel and Laurenz Bougan in
+[#18](https://github.com/sentier-dev/sentier-bafu/issues/18).

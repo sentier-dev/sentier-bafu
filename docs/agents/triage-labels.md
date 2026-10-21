@@ -4,7 +4,6 @@
 |---|---|---|
 | needs-triage | `needs-triage` | Existing finding meaning is retained: awaits independent remeasurement; engineering requests also require classification. |
 | needs-info | `needs-info` | Missing evidence or clarification prevents implementation. |
-| ready-for-agent | `ready-for-agent` | Bounded implementation task, once its declared blockers close. |
 | ready-for-human | `ready-for-human` | Human work or decision is required. |
 | wontfix | `wontfix` | Retained with a reason; never delete the evidence. |
 

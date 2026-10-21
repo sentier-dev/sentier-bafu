@@ -1,4 +1,4 @@
-# BAFU Community
+# sentier-bafu
 
 A community space for using, testing and improving BAFU/UVEK inventories and
 returning evidenced recommendations to the dataset provider.

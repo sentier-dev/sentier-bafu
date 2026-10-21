@@ -25,3 +25,6 @@ MIT project. Brightway Flows code is AGPL-3.0-or-later and data ODbL-1.0;
 copying its implementation or redistributing its data requires an explicit
 licensing decision. Preserve the community repo's documented permission and
 confirm its applicability to consolidation before republishing the data.
+
+It awaits the decision of Chris Mutel and Laurenz Bougan in
+[#18](https://github.com/sentier-dev/sentier-bafu/issues/18).
