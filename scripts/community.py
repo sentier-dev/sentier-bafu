@@ -153,34 +153,63 @@ def ledger_rows(text):
     return rows
 
 
+RECORD_FIELDS = {
+    "id",
+    "kind",
+    "links",
+    "ledger_status",
+    "community_patch",
+    "reviewer_consensus",
+    "pipeline_run_evidence",
+    "validation_scope",
+    "provider_response",
+    "provider_correction_shipped",
+    "next_action",
+    "review_role",
+    "evidence_url",
+    "retained",
+}
+RETAINED_KINDS = {"ask", "objection", "earlier-interpretation"}
+
+
 def validate_reconciliation(reconciliation, rows, contributions):
-    errors, seen = [], set()
+    errors, seen, records = [], set(), {}
     for r in reconciliation["records"]:
-        rid = r["id"]
+        rid = r.get("id", "?")
+        if RECORD_FIELDS - r.keys():
+            errors.append(f"{rid}: missing fields: " + ", ".join(sorted(RECORD_FIELDS - r.keys())))
+            continue
         if rid in seen:
             errors.append(f"{rid}: duplicate reconciliation record")
         seen.add(rid)
-        after = r["ledger_status"]["after"]
+        records[rid] = r
+        before, after = r["ledger_status"].get("before"), r["ledger_status"].get("after")
         if r["kind"] == "finding":
+            if {before, after} - FINDING_STATES:
+                errors.append(f"{rid}: invalid status {before} -> {after}")
             row = rows.get(rid)
             if not row:
                 errors.append(f"{rid}: not in the findings ledger")
                 continue
-            if after not in FINDING_STATES:
-                errors.append(f"{rid}: invalid status {after}")
             if after != row["status"]:
                 errors.append(f"{rid}: ledger says {row['status']}, reconciliation says {after}")
-            if row["links"] - set(r["links"]):
-                errors.append(f"{rid}: ledger links missing from reconciliation")
+            if row["links"] != set(r["links"]):
+                errors.append(f"{rid}: ledger and reconciliation links differ")
         elif r["kind"] == "contribution":
-            if rid not in contributions or contributions[rid] != after:
+            if {before, after} - STATES:
+                errors.append(f"{rid}: invalid status {before} -> {after}")
+            if contributions.get(rid) != after:
                 errors.append(f"{rid}: contribution status differs from its record")
+        else:
+            errors.append(f"{rid}: unknown kind {r['kind']}")
         # A patch or a provider confirmation never closes a finding; only a shipped release does.
         shipped = r["provider_correction_shipped"]
         if after == "upstream-fixed" and not shipped:
             errors.append(f"{rid}: upstream-fixed needs a shipped provider correction")
         if shipped and not (shipped.get("release") and shipped.get("evidence_url")):
             errors.append(f"{rid}: shipped correction needs a release and evidence")
+        if shipped and r["kind"] == "finding" and after != "upstream-fixed":
+            errors.append(f"{rid}: a shipped correction makes the finding upstream-fixed")
         patch = r["community_patch"]
         if patch and not (patch.get("url") and patch.get("authorisation", {}).get("evidence_url")):
             errors.append(f"{rid}: patch needs a pinned url and authorisation evidence")
@@ -191,14 +220,32 @@ def validate_reconciliation(reconciliation, rows, contributions):
             r["next_action"] and r["review_role"] in ROLES and r["evidence_url"]
         ):
             errors.append(f"{rid}: open record needs a next action, review role and evidence")
+        if any(
+            not isinstance(x, dict)
+            or x.get("kind") not in RETAINED_KINDS
+            or not x.get("text")
+            or not x.get("evidence_url")
+            for x in r["retained"]
+        ):
+            errors.append(f"{rid}: retained items need a kind, text and evidence")
     for rid in set(rows) - seen:
         errors.append(f"{rid}: ledger finding has no reconciliation record")
     for rid in set(contributions) - seen:
         errors.append(f"{rid}: contribution has no reconciliation record")
-    patched = {f for p in reconciliation["patches"] for f in p["findings"]}
-    for r in reconciliation["records"]:
-        if r["community_patch"] and r["id"] not in patched:
-            errors.append(f"{r['id']}: patch not listed under patches")
+    # The patch list and the records must name the same patch for each finding, both ways.
+    listed = {}
+    for entry in reconciliation["patches"]:
+        if entry.get("id") in listed:
+            errors.append(f"patch {entry.get('id')} listed twice")
+        listed[entry.get("id")] = set(entry.get("findings", []))
+    for rid, r in records.items():
+        pid = (r["community_patch"] or {}).get("id")
+        if pid and rid not in listed.get(pid, set()):
+            errors.append(f"{rid}: cites patch {pid}, which does not list it")
+    for pid, findings in listed.items():
+        for rid in findings:
+            if (records.get(rid, {}).get("community_patch") or {}).get("id") != pid:
+                errors.append(f"patch {pid} lists {rid}, which does not cite it")
     return errors
 
 

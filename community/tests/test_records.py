@@ -155,3 +155,33 @@ class ReconciliationTests(unittest.TestCase):
     def test_contribution_status_follows_its_record(self):
         self.contributions["C002"] = "accepted"
         self.assertTrue(self.errors())
+
+    def test_link_dropped_from_ledger_is_reported(self):
+        self.rows["F1"]["links"].pop()
+        self.assertTrue(self.errors())
+
+    def test_unknown_kind_is_reported(self):
+        self.record("F2")["kind"] = "Finding"
+        self.assertTrue(self.errors())
+
+    def test_patch_ids_must_agree_both_ways(self):
+        self.record("F1")["community_patch"]["id"] = "0002-supplier-locations"
+        self.assertTrue(self.errors())
+        self.setUp()
+        self.reconciliation["patches"].append({"id": "9999-invented", "findings": ["F2"]})
+        self.assertTrue(self.errors())
+
+    def test_malformed_record_is_reported_not_raised(self):
+        del self.record("F9")["provider_correction_shipped"]
+        self.assertTrue(self.errors())
+
+    def test_retained_items_need_evidence(self):
+        self.record("F14")["retained"][0]["evidence_url"] = ""
+        self.assertTrue(self.errors())
+
+    def test_shipped_correction_requires_upstream_fixed(self):
+        self.record("F1")["provider_correction_shipped"] = {
+            "release": "BAFU:2027 v1",
+            "evidence_url": "https://example.org/release",
+        }
+        self.assertTrue(self.errors())
