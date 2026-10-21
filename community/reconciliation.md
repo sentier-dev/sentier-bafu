@@ -1,6 +1,6 @@
 # Reconciliation receipt: findings and community patches, 21 October 2026
 
-This receipt accounts for every finding (F1–F16) and contribution (C001, C002)
+This receipt accounts for every finding (F1–F17) and contribution (C001, C002)
 against the public metadata of the
 [bafu-community-fixes](https://github.com/sentier-dev/bafu-community-fixes)
 patches at revision `053c799`. The records themselves are in
@@ -33,6 +33,9 @@ The patches and BAFU's confirmation are recorded as separate fields.
   F9 (CEM II lorry transport), F10 (straw bale without flows: no type flag
   can supply missing flows, so patch 0011 does not address it), F13–F16
   (re-measured on 21 October 2026; see #28–#31).
+- **Added on 21 October, after the reconciliation:** F17 (#35, swapped ecotoxicity
+  sub-indicator columns in the published workbook), open and awaiting an independent
+  re-measurement.
 - **Informational:** F5 (chloride sub-compartments), F6 (concrete effluent),
   F12 (elementary flows in two units).
 - **Withdrawn:** F4, kept so nobody re-finds it.
@@ -52,6 +55,7 @@ evidence link in [reconciliation.json](reconciliation.json). In short:
 | Verify the correction in the next BAFU release, then mark it upstream-fixed and retire the patch; for F11, also ask about the 57 unprefixed obsolete datasets | maintainer | F1, F3, F11 |
 | Send to BAFU with the next batch | maintainer | F2, F6, F8, F9, F10, F13, F14, F15, F16 |
 | Recompute from an independent score run | reviewer | F7 |
+| Re-measure independently, then send to BAFU | reviewer | F17 |
 | Check the flow crosswalk | flow curator | F5 |
 | Importer parity or pinned LCIA package | importer maintainer | F12, C002 |
 | Run the missing checks | reviewer | C001 |
