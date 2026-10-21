@@ -344,7 +344,8 @@
       "id": "F13",
       "kind": "finding",
       "links": [
-        "https://github.com/sentier-dev/sentier-bafu/issues/28"
+        "https://github.com/sentier-dev/sentier-bafu/issues/28",
+        "https://gitlab.com/eos-lci/lci-bafu-catalog/-/issues/34"
       ],
       "ledger_status": {
         "before": "open",
@@ -353,10 +354,10 @@
       "community_patch": null,
       "reviewer_consensus": null,
       "pipeline_run_evidence": null,
-      "validation_scope": "Re-measured on the release files on 2026-10-21; the dataset is modelled per kWh.",
+      "validation_scope": "Re-measured on the release files on 2026-10-21; the dataset is modelled per kWh. BAFU's published LCIA-Results.xlsx reproduces to six digits with the edge multiplied by 3.6 (sentier-brightway backtest, 2026-10-21). 316743 (IN coal, no consumer) has the same label error.",
       "provider_response": null,
       "provider_correction_shipped": null,
-      "next_action": "Send to BAFU with the next batch: relabel the reference unit as kWh, no rescale.",
+      "next_action": "Send to BAFU with the next batch: relabel the reference unit of 401085 and 316743 as kWh, no rescale; note that the published scores of FI gas electricity and the FI mix are overstated by about 9 % and 2 %.",
       "review_role": "maintainer",
       "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/28",
       "retained": []
