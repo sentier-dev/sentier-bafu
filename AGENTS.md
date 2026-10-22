@@ -1,23 +1,8 @@
 # Working on sentier-bafu
 
-Read `CONTEXT.md` before changing domain language. For consolidation or review
+Read `CONTEXT.md` before changing domain language, and flag any conflict with
+an ADR explicitly. For consolidation or review
 features, read `docs/plans/bafu-community/README.md` and the relevant `docs/adr/`.
-
-## Agent skills
-
-### Issue tracker
-
-Use GitHub issues through `gh`; see `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Engineering readiness is separate from finding status. See
-`docs/agents/triage-labels.md` before applying labels.
-
-### Domain docs
-
-One glossary in `CONTEXT.md`; decisions in `docs/adr/`. Read
-`docs/agents/domain.md` when changing either.
 
 ## Migration invariants
 

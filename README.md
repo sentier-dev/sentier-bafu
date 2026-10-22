@@ -15,7 +15,7 @@ working [community-fixes pipeline](https://github.com/sentier-dev/bafu-community
 and this evidence workspace together. Community-fixes is authoritative where
 they conflict. Its package and commands stay stable; migration parity and the
 new review experience are tracked as separate tasks. The pipeline has not yet
-been merged into this repository. See the [implementation task briefs](docs/plans/bafu-community/task-briefs.md)
+been merged into this repository. See the [consolidation issues](https://github.com/sentier-dev/sentier-bafu/issues/18)
 and the [architecture decisions](docs/adr/).
 
 ## Start with the import

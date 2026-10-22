@@ -18,14 +18,15 @@ Sentier evidence and discussions around it.
 ## Read in this order
 
 1. [Migration inventory and conflict decisions](migration.md).
-2. [UX investigation and proposed user journeys](ux-review.md).
-3. [Product and validation specification](spec.md).
-4. [Tasks and technical dependencies](tasks.md).
-5. [Implementation task briefs](task-briefs.md).
-6. [Naming and URL cutover](naming.md).
+2. [Naming and URL cutover](naming.md).
 
-The [ADRs](../../adr/) record repository ownership, flow identity, publication,
-review states and naming. [CONTEXT.md](../../../CONTEXT.md) defines the language.
+Scope, acceptance evidence and dependencies for each task live in the issues
+(#18–#26), not in this folder. The issues were filed from an earlier spec, task
+list, task briefs and UX review; that text is kept at
+[c3d4e0b](https://github.com/sentier-dev/sentier-bafu/tree/c3d4e0b11d790ca0858aa4c012942c77c0638aa3/docs/plans/bafu-community).
+
+The [ADRs](../../adr/) record repository ownership, flow identity, publication
+and review states; naming is decided in #25. [CONTEXT.md](../../../CONTEXT.md) defines the language.
 The [source inventory](source-inventory.json) accounts for every tracked file
 in both pinned repositories.
 
