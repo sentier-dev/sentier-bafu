@@ -41,6 +41,19 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
+# Review-workspace files merged from sentier-bafu (#19) keep their own style for now;
+# the community lint scope stays exactly what it was. Bringing them under ruff is a
+# separate, visible change.
+extend-exclude = [
+    "community/tests/",
+    "registry-tests/",
+    "scripts/audit_flow_mapping.py",
+    "scripts/audit_registry.py",
+    "scripts/build_checks.py",
+    "scripts/build_site.py",
+    "scripts/check_site.py",
+    "scripts/community.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
