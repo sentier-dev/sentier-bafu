@@ -205,7 +205,8 @@ The findings and contributions are reconciled with the patches in the
 This is a candidate integration ([#19](https://github.com/sentier-dev/sentier-bafu/issues/19)),
 to be confirmed with the community maintainers. Community-fixes is authoritative where the
 two projects conflict; its package, commands and XML extension namespace are unchanged.
-See the [plan](docs/plans/bafu-community/README.md), the
+The [file-disposition receipt](docs/plans/bafu-community/integration-receipt.md) accounts
+for every file of both sources. See the [plan](docs/plans/bafu-community/README.md), the
 [consolidation issues](https://github.com/sentier-dev/sentier-bafu/issues/18) and the
 [architecture decisions](docs/adr/). The original workspace README can be read
 [at a13bbbf](https://github.com/sentier-dev/sentier-bafu/blob/a13bbbf2e4536e8de62eb8b4a9dd6a6a50faea41/README.md);

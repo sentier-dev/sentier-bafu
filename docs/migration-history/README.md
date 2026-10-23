@@ -13,3 +13,8 @@ read each one in place through its permalink.
 
 The workspace README at `a13bbbf` is the same blob as at `14e718e` (the head
 that the planning PR #27 left); PRs #33 and #34 did not change it.
+
+The current [README](../../README.md) keeps the community usage guide and adds a
+*Review workspace* section before its License section. The
+[integration receipt](../plans/bafu-community/integration-receipt.md) records the
+SHA-256 of both copies and of every other file.
