@@ -8,6 +8,16 @@ This public Sentier project connects partner evidence, Brightcon hackathon work,
 
 [Import & use](site/import.md) · [Findings ledger](community/findings.md) · [Evidence & testing](community/build-validation.md) · [Contribute](community/README.md) · [Consensus](community/workflow.md)
 
+## Consolidating the community work
+
+The [migration and UX plan](docs/plans/bafu-community/README.md) brings the
+working [community-fixes pipeline](https://github.com/sentier-dev/bafu-community-fixes)
+and this evidence workspace together. Community-fixes is authoritative where
+they conflict. Its package and commands stay stable; migration parity and the
+new review experience are tracked as separate tasks. The pipeline has not yet
+been merged into this repository. See the [consolidation issues](https://github.com/sentier-dev/sentier-bafu/issues/18)
+and the [architecture decisions](docs/adr/).
+
 ## Start with the import
 
 [Sentier importers](https://github.com/sentier-dev/sentier-importers) parses the provider release. [Inventory](https://github.com/sentier-dev/sentier-inventory), [methods](https://github.com/sentier-dev/sentier-methods) and [mappings](https://github.com/sentier-dev/sentier-mappings) hold the derived artifacts; [sentier-brightway](https://github.com/sentier-dev/sentier-brightway) builds the pinned application baseline.
