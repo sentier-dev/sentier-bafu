@@ -10,7 +10,7 @@ validate-community:
     - python3 scripts/community.py check
     - python3 -m unittest discover -s community/tests
     - python3 scripts/build_checks.py community/templates/build-audit.json
-    - uv run --with pandas==2.2.3 --with pyarrow==19.0.1 python3 -m unittest discover -s tests
+    - uv run --with pandas==2.2.3 --with pyarrow==19.0.1 python3 -m unittest discover -s registry-tests
 
 publish-pages:
   stage: deploy
