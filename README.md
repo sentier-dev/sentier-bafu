@@ -175,6 +175,109 @@ BAFU_ECOSPOLD_DIR=path/to/bafu-2026-v1 uv run pytest   # also checks the full re
 uv run ruff check && uv run ruff format
 ```
 
+## Review workspace
+
+<!-- Composed by the integration (sentier-bafu#19). Everything above is the
+bafu-community-fixes README at 053c799, unchanged; the License section below adds the
+notices of the merged files and corrects the XSD path. -->
+
+This repository is also the public Sentier review workspace for BAFU/UVEK. It connects
+partner evidence, Brightcon hackathon work, candidate improvements and the discussion
+around the data, and returns actionable recommendations to BAFU. Its findings, records
+and site came from `sentier-dev/sentier-bafu`; the pipeline above came from
+`sentier-dev/bafu-community-fixes`. Both Git histories are kept.
+
+The intended order of work is: the provider release, then this pipeline's import fixes
+and selected patches, then a Sentier import of the patched output. That is not yet how
+the import page reads: [Import & use](site/import.md) still describes the Sentier import
+of the raw release, the baseline, until Sentier inventory consumes the patched output
+([community-fixes #2](https://github.com/sentier-dev/bafu-community-fixes/issues/2)).
+The findings and contributions are reconciled with the patches in the
+[reconciliation receipt](community/reconciliation.md).
+
+[Import & use](site/import.md) · [Findings ledger](community/findings.md) ·
+[Reconciliation](community/reconciliation.md) ·
+[Evidence & testing](community/build-validation.md) · [Contribute](community/README.md) ·
+[Consensus](community/workflow.md)
+
+### Consolidation status
+
+This is a candidate integration ([#19](https://github.com/sentier-dev/sentier-bafu/issues/19)),
+to be confirmed with the community maintainers. Community-fixes is authoritative where the
+two projects conflict; its package, commands and XML extension namespace are unchanged.
+See the [plan](docs/plans/bafu-community/README.md), the
+[consolidation issues](https://github.com/sentier-dev/sentier-bafu/issues/18) and the
+[architecture decisions](docs/adr/). The original workspace README can be read
+[at a13bbbf](https://github.com/sentier-dev/sentier-bafu/blob/a13bbbf2e4536e8de62eb8b4a9dd6a6a50faea41/README.md);
+verbatim copies of both original READMEs are kept as history in
+[docs/migration-history](docs/migration-history/README.md).
+
+### Bring evidence, then test the claim
+
+| Step | What belongs here |
+|---|---|
+| Canonical import | Source release, identifiers, hashes and reproducible import path |
+| Partner contributions | Findings, proposed mappings, models and scenarios with evidence |
+| Application & testing | Separate candidates, named exchange changes, coverage and score comparisons |
+| Reviewed consensus | Actual reviewer decisions, objections and their disposition |
+| Recommendations to BAFU | Agreed findings, delivery evidence and provider responses |
+
+A **finding** starts with the source release, dataset code, what you measured and how.
+Read [the ledger](community/findings.md), then
+[open an issue](https://github.com/sentier-dev/sentier-bafu/issues/new/choose). Reproduce
+observations against the provider's source files before concluding that BAFU's data is
+wrong. An importer defect belongs to the component that introduced it.
+
+A **contribution layer** gets a [record](community/templates/contribution.json), isolated
+candidate build and [validation plan](community/build-validation.md). A reconstruction of
+an aggregated inventory is a new inventory claim; representation parity, inventory
+correction and forecasting require different tests.
+
+The contribution records and site have their own checks, independent of the package
+environment above. They run on Python 3.12 outside the package project:
+
+```sh
+uv run --no-project --python 3.12 python scripts/community.py check
+uv run --no-project --python 3.12 python -m unittest discover -s community/tests
+uv run --no-project --python 3.12 python scripts/build_checks.py community/templates/build-audit.json
+uv run --no-project --python 3.12 --with pandas==2.2.3 --with pyarrow==19.0.1 python -m unittest discover -s registry-tests
+```
+
+The [synthetic audit example](community/templates/build-audit.json) is a format
+demonstration, not a measured BAFU build. The earlier Sentier import route, current work
+and measured audits are described in the
+[original workspace README](https://github.com/sentier-dev/sentier-bafu/blob/a13bbbf2e4536e8de62eb8b4a9dd6a6a50faea41/README.md).
+
+### Documentation site
+
+**[Open the BAFU / UVEK site](https://sentier-dev.github.io/sentier-bafu/).** The
+[Documentation workflow](.github/workflows/pages.yml) checks pull requests and publishes
+updates from `main` to GitHub Pages, separately from the package [CI](.github/workflows/ci.yml).
+Build locally with `uv run --no-project --python 3.12 --with markdown==3.7 scripts/build_site.py`; see
+[site maintenance](site/README.md). Generated pages contain coordination material only,
+with no inventory downloads.
+
+### Data, credit and participation
+
+Source datasets retain their own terms, attribution and modification requirements. Keep
+restricted exports and confidential partner evidence local. No new reviewer consensus,
+sent recommendation or provider endorsement is implied by the workspace. See
+[the workflow](community/workflow.md),
+[recommendation tracker](community/recommendations/tracker.json) and
+[terms](docs/terms-of-use.md). Licences of the code and bundled files are listed below.
+
 ## License
 
-MIT. The EcoSpold 1 XSD files in `schemas/ecospold1/` are under the EcoSpold Public License.
+The code and original documentation are MIT ([LICENSE](LICENSE)). Bundled files keep
+their own terms:
+
+- The EcoSpold 1 XSD files in `src/bafu_community_fixes/schemas/ecospold1/` are under the
+  EcoSpold Public License 1.0 (see their file headers and
+  [README](src/bafu_community_fixes/schemas/ecospold1/README.md)).
+- The Brightway Flows data in `src/bafu_community_fixes/data/` is under the Open Database
+  License 1.0, not MIT (see [its README](src/bafu_community_fixes/data/README.md)).
+- The Rubik font embedded in run reports is under the SIL Open Font License 1.1
+  ([Rubik-OFL.txt](src/bafu_community_fixes/report_assets/Rubik-OFL.txt)), as is the
+  site's Nunito font ([OFL.txt](site/assets/OFL.txt)).
+- The Départ de Sentier logo (`site/assets/dds-logo.svg`) is by Sylvain Prevost, under
+  CC BY 4.0 (see [site maintenance](site/README.md)).
