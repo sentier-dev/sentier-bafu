@@ -35,6 +35,19 @@ their explicit correct multiplier; missing/null factors cannot default these
 magnitude changes to one. A unit/fallback refusal identifies a package,
 entry or flow that needs fixing before the build can proceed.
 
+**How close this route gets to BAFU's published results.** A
+[score baseline](runs/sentier-brightway-backtest-2026-10-21.json) of this route
+(sentier-brightway with the sentier-mappings EF 3.1 bridge, 21 October 2026)
+scored all 11,947 processes in 25 EF 3.1 categories against BAFU's
+`LCIA-Results.xlsx`. 12 categories agree within ±1 % for 99.3–99.7 % of
+processes. Water use, cancer toxicity, ecotoxicity and marine eutrophication
+do not; 1.1 % of processes agree within ±1 % in all 25. Two of the
+divergences are in BAFU's workbook rather than this route: the FI gas
+electricity label error ([#28](https://github.com/sentier-dev/sentier-bafu/issues/28))
+and the swapped ecotoxicity sub-indicator columns
+([#35](https://github.com/sentier-dev/sentier-bafu/issues/35)). sentier-brightway
+#4 changes no score. This baseline is not C002's reproduction.
+
 These fixes do not turn the current EF 3.1 bridge into a consumer of the
 BAFU→openLCA 2.8.2 mapping. That integration remains
 [C002](contributions/C002.json). Its next inputs are the pinned LCIA package
