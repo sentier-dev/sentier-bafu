@@ -202,7 +202,180 @@
               "unit"
             ]
           }
-        ]
+        ],
+        "all_families": [
+          {
+            "family": "Electricity, natural gas, at power plant",
+            "flow_name": "Electricity, natural gas, at power plant",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "kWh"
+            ],
+            "data_finding": {
+              "finding": "F13",
+              "url": "https://github.com/sentier-dev/sentier-bafu/issues/28"
+            }
+          },
+          {
+            "family": "Natural gas, production US, at long-distance pipeline",
+            "flow_name": "Natural gas, production US, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production US, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, production RU, at long-distance pipeline",
+            "flow_name": "Natural gas, production RU, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production DZ, at long-distance pipeline",
+            "flow_name": "Natural gas, production DZ, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production NG, at long-distance pipeline",
+            "flow_name": "Natural gas, production NG, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production NG, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, production QA, at long-distance pipeline",
+            "flow_name": "Natural gas, production QA, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production RU, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, production DZ, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, production QA, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, production NO, at evaporation plant",
+            "flow_name": "Production plant, natural gas",
+            "flow_type": "technosphere",
+            "units": [
+              "p",
+              "unit"
+            ]
+          },
+          {
+            "family": "Natural gas, liquefied, at freight ship",
+            "flow_name": "Natural gas, liquefied, at freight ship",
+            "flow_type": "production",
+            "units": [
+              "Nm3",
+              "m3"
+            ],
+            "data_finding": {
+              "finding": "F15",
+              "url": "https://github.com/sentier-dev/sentier-bafu/issues/30"
+            }
+          },
+          {
+            "family": "Natural gas, production LY, at long-distance pipeline",
+            "flow_name": "Natural gas, production LY, at long-distance pipeline",
+            "flow_type": "production",
+            "units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Asparagus, conventional",
+            "flow_name": "Water, CH",
+            "flow_type": "biosphere",
+            "units": [
+              "kg",
+              "m3"
+            ]
+          },
+          {
+            "family": "Gypsum fibre board, at plant",
+            "flow_name": "Gypsum fibre board, at plant",
+            "flow_type": "production",
+            "units": [
+              "kg",
+              "m2"
+            ]
+          },
+          {
+            "family": "Irrigating",
+            "flow_name": "Irrigating",
+            "flow_type": "production",
+            "units": [
+              "ha",
+              "m3"
+            ]
+          },
+          {
+            "family": "Strawberries, conventional, unheated plastic tunnel",
+            "flow_name": "Water, CH",
+            "flow_type": "biosphere",
+            "units": [
+              "kg",
+              "m3"
+            ]
+          }
+        ],
+        "note": "F13 (MJ/kWh) and F15 (Nm3/m3) are BAFU data errors and account for 2 of the 18 families. The other 16 are 6 gas-production families whose members are declared in MJ and Nm3, 6 that write the same count unit as 'p' and 'unit', 2 with water in kg and m3, one board in kg and m2 and one irrigation family in ha and m3. Without the two data errors the check still fails."
       },
       "U2_reference_output": {
         "families_failing": 10,
@@ -231,7 +404,88 @@
               "Nm3"
             ]
           }
-        ]
+        ],
+        "all_families": [
+          {
+            "family": "Electricity, natural gas, at power plant",
+            "reference_units": [
+              "MJ",
+              "kWh"
+            ],
+            "data_finding": {
+              "finding": "F13",
+              "url": "https://github.com/sentier-dev/sentier-bafu/issues/28"
+            }
+          },
+          {
+            "family": "Natural gas, production US, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production RU, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production DZ, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production NG, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, production QA, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Natural gas, liquefied, at freight ship",
+            "reference_units": [
+              "Nm3",
+              "m3"
+            ],
+            "data_finding": {
+              "finding": "F15",
+              "url": "https://github.com/sentier-dev/sentier-bafu/issues/30"
+            }
+          },
+          {
+            "family": "Natural gas, production LY, at long-distance pipeline",
+            "reference_units": [
+              "MJ",
+              "Nm3"
+            ]
+          },
+          {
+            "family": "Gypsum fibre board, at plant",
+            "reference_units": [
+              "kg",
+              "m2"
+            ]
+          },
+          {
+            "family": "Irrigating",
+            "reference_units": [
+              "ha",
+              "m3"
+            ]
+          }
+        ],
+        "note": "F13 and F15 account for 2 of the 10 families; the other 8 are 6 gas-production families in MJ and Nm3, one board in kg and m2 and one irrigation family in ha and m3."
       },
       "MB_sum_to_one": {
         "families_where_model_imposes_it": 90,
