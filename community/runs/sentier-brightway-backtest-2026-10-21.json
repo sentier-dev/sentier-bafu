@@ -1,7 +1,8 @@
 {
   "date": "2026-10-21",
   "kind": "score-baseline; current Sentier import route, not a contribution layer",
-  "scope": "BAFU:2026 v1 through sentier-brightway and the sentier-mappings EF 3.1 bridge (bafu-2026-v1__ef-3.1), scored by adjoint solve for all processes and 25 EF 3.1 categories, compared with BAFU's published LCIA results. It does not consume the BAFU→openLCA 2.8.2 mapping; C002's independent reproduction stays not-run.",
+  "purpose": "A published comparison with attribution, not an acceptance test. BAFU's published results were computed in openLCA with GreenDelta's EF 3.1 implementation; matching them is not a goal, and the route is not changed to follow openLCA. Each difference is attributed to this route, BAFU's inventory, BAFU's workbook or a method difference.",
+  "scope": "BAFU:2026 v1 through sentier-brightway and the sentier-mappings EF 3.1 bridge (bafu-2026-v1__ef-3.1), scored by adjoint solve for all processes and 25 EF 3.1 categories, compared with BAFU's published LCIA results. It does not consume the BAFU→openLCA 2.8.2 mapping; C002's own comparison stays not-run.",
   "code": {
     "repository": "https://github.com/sentier-dev/sentier-brightway",
     "revisions": {
@@ -22,7 +23,7 @@
     "sheet": "BAFU_2026 v1",
     "sha256": "a213ab5ad5252ad36366a2999dbd63ef64bd8aa65c006d937ff878dbad3a239c",
     "version": "BAFU:2026 v1, June 2026",
-    "note": "The tool defaults to a '_corrected' workbook that was not available; what it changes is not established."
+    "note": "The tool defaults to a '_corrected' workbook that was not available; what it changes is not established. This is BAFU's June workbook; BAFU published a corrected workbook on 15 July 2026 (BAFU-2026 v1_LCIA Results_corrected.zip, xlsx sha256 7e9f1c9f9c171f847b5d445c8d939896cc7594571a77029ca6c098f1dde7b672, 'correction of headers since June'). A re-run against it is pending."
   },
   "tools": {
     "python": "3.12.12",
@@ -536,18 +537,26 @@
     },
     {
       "what": "ecotoxicity freshwater inorganics/organics",
-      "cause": "BAFU's workbook columns are swapped: our inorganics match BAFU's 'organics' (median ratio 1.0001). BAFU's own distributed EF 3.1 Method (adapted), GreenDelta's 2.8.2 package and JRC's EF 3.1 all carry the plain-metal factors under inorganics. Open finding F17, awaiting independent re-measurement.",
+      "cause": "BAFU's June workbook has the two columns swapped: our inorganics match its 'organics' (median ratio 1.0001). BAFU's own distributed EF 3.1 Method (adapted), GreenDelta's 2.8.2 package and JRC's EF 3.1 all carry the plain-metal factors under inorganics. BAFU's corrected July workbook puts them in order (Copper, primary, at refinery GLO: 170.42 inorganics, 0.60 organics; organics exceeds inorganics in 204 of 11,947 rows), as reported by Laurenz Bougan on #36. Finding F17 is to be re-scoped to the June file once the July file is re-run here.",
       "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35"
     },
     {
       "what": "ionising radiation, 23 processes at exactly ×1000",
       "cause": "consistent with the Bq/kBq two-unit declaration (F12)",
       "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/32"
+    },
+    {
+      "what": "water use (22.7 % of processes within ±1 %; tap-water processes ×58–67)",
+      "cause": "method difference: BAFU applies country-specific water factors, where this route installs global factors only (sentier-brightway README limitation); this route also leaves the 'Chemically polluted water' and 'Waste water' returns unlinked. Stated by Laurenz Bougan from the September parity work and measured in the attribution run.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/openlca-attribution-2026-10-26.json"
+    },
+    {
+      "what": "human toxicity, cancer: total ×1.36, inorganics ×2.01 (median)",
+      "cause": "method difference: the two implementations characterise unspecified chromium differently; this route uses EF's chromium flow, which carries Cr(VI)'s factors (decided on 14 September 2026 in sentier-mappings round 7). Stated by Laurenz Bougan and measured in the attribution run.",
+      "evidence_url": "https://github.com/sentier-dev/sentier-bafu/blob/main/community/runs/openlca-attribution-2026-10-26.json"
     }
   ],
   "open_divergences": [
-    "water use (22.7 % of processes within ±1 %; tap-water processes ×58–67)",
-    "human toxicity, cancer: total ×1.36, inorganics ×2.01 (median)",
     "ecotoxicity total (71.8 % within ±1 %)",
     "marine eutrophication (88.5 % within ±1 %)"
   ],
