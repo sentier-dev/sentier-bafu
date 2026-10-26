@@ -23,7 +23,7 @@
     "sheet": "BAFU_2026 v1",
     "sha256": "a213ab5ad5252ad36366a2999dbd63ef64bd8aa65c006d937ff878dbad3a239c",
     "version": "BAFU:2026 v1, June 2026",
-    "note": "The tool defaults to a '_corrected' workbook that was not available; what it changes is not established. This is BAFU's June workbook; BAFU published a corrected workbook on 15 July 2026 (BAFU-2026 v1_LCIA Results_corrected.zip, xlsx sha256 7e9f1c9f9c171f847b5d445c8d939896cc7594571a77029ca6c098f1dde7b672, 'correction of headers since June'). A re-run against it is pending."
+    "note": "The tool defaults to a '_corrected' workbook that was not available; what it changes is not established. Re-run on 26 October 2026 against BAFU's corrected July workbook (BAFU-2026 v1 LCIA Results_corrected.xlsx, sha256 7e9f1c9f9c171f847b5d445c8d939896cc7594571a77029ca6c098f1dde7b672): it differs from the June file in three cells only: the date, and the header labels of the two ecotoxicity sub-indicator columns, which are exchanged. Every value is identical, so every share, median and zero count is unchanged, and the two sub-indicators now agree as labelled."
   },
   "tools": {
     "python": "3.12.12",
@@ -537,7 +537,7 @@
     },
     {
       "what": "ecotoxicity freshwater inorganics/organics",
-      "cause": "BAFU's June workbook has the two columns swapped: our inorganics match its 'organics' (median ratio 1.0001). BAFU's own distributed EF 3.1 Method (adapted), GreenDelta's 2.8.2 package and JRC's EF 3.1 all carry the plain-metal factors under inorganics. BAFU's corrected July workbook puts them in order (Copper, primary, at refinery GLO: 170.42 inorganics, 0.60 organics; organics exceeds inorganics in 204 of 11,947 rows), as reported by Laurenz Bougan on #36. Finding F17 is to be re-scoped to the June file once the July file is re-run here.",
+      "cause": "BAFU's June workbook has the two columns swapped: our inorganics match its 'organics' (median ratio 1.0001). BAFU's own distributed EF 3.1 Method (adapted), GreenDelta's 2.8.2 package and JRC's EF 3.1 all carry the plain-metal factors under inorganics. BAFU's corrected July workbook has them in order, and against it the two sub-indicators agree as labelled (F17: present in the June file, corrected in July).",
       "evidence_url": "https://github.com/sentier-dev/sentier-bafu/issues/35"
     },
     {

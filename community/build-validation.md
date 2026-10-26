@@ -61,4 +61,4 @@ The [attribution run](runs/openlca-attribution-2026-10-26.json) shows where that
 - **In the route.** It leaves two water returns unlinked.
 - **In BAFU's files.** The FI gas electricity label error ([#28](https://github.com/sentier-dev/sentier-bafu/issues/28)); the swapped ecotoxicity sub-indicator columns of the June workbook ([#35](https://github.com/sentier-dev/sentier-bafu/issues/35)), which BAFU's corrected July workbook fixes; and ionising-radiation amounts that BAFU's ecoSpold states in Bq and its openLCA database in kBq (F12).
 
-Both runs read the June workbook; they are re-run against the July file once it is available.
+Both runs read the June workbook. Re-run against BAFU's corrected July workbook (26 October), every result is unchanged; the July file differs only in the header labels of the two ecotoxicity sub-indicator columns, which are now correct (F17).

@@ -6,7 +6,7 @@
     "file": "BAFU-2026 v1 LCIA Results.xlsx",
     "sheet": "BAFU_2026 v1",
     "sha256": "a213ab5ad5252ad36366a2999dbd63ef64bd8aa65c006d937ff878dbad3a239c",
-    "note": "June 2026 workbook. Its ecotoxicity sub-indicator columns are swapped (F17); BAFU's corrected July workbook (xlsx sha256 7e9f1c9f9c171f847b5d445c8d939896cc7594571a77029ca6c098f1dde7b672) is not yet re-run. Sub-indicators are compared against the swapped columns here."
+    "note": "June 2026 workbook. Its ecotoxicity sub-indicator columns are swapped (F17); sub-indicators are compared against the swapped columns here. Re-run on 26 October 2026 against BAFU's corrected July workbook (BAFU-2026 v1 LCIA Results_corrected.xlsx, sha256 7e9f1c9f9c171f847b5d445c8d939896cc7594571a77029ca6c098f1dde7b672): it differs from the June file in three cells only: the date, and the header labels of the two ecotoxicity sub-indicator columns, which are exchanged. Every value is identical, so every share, median and zero count is unchanged, and the two sub-indicators now agree as labelled."
   },
   "design": "One technosphere and biosphere for all 11,947 processes, read from BAFU's own openLCA database (BAFU-2026 v1 openLCA.zolca), every one of its 293,747 elementary exchanges paired with sentier-inventory. Scored twice with only the factor vector changed: (1) the EF 3.1 package stored in that database (openLCA LCIA methods 2.8.0); (2) JRC's EF 3.1 factors through this route's flow bridge. Strict rule of the 21 October comparison: every (process, category) pair counts, ratio ours/BAFU, within 1 %.",
   "validation": "The JRC side reproduces the 21 October comparison record exactly in all 25 categories (same pins; shares, medians and zero counts identical).",
@@ -248,8 +248,7 @@
   "limits": [
     "Shows which factor set and flow assignment reproduce BAFU's numbers, not which is correct.",
     "'Same flow' means the brightway-flows 1.1.0 consensus crosswalk; 855 of the 2,460 openLCA flows used have no consensus id, so on 5,778 of 21,720 matrix rows a number difference and an identity difference cannot be told apart.",
-    "openLCA's calculation was reconstructed, not run; the 99.7 % agreement supports the reconstruction.",
-    "June workbook only."
+    "openLCA's calculation was reconstructed, not run; the 99.7 % agreement supports the reconstruction."
   ],
   "measured_by": "Manuel Klarmann (Eaternity), agent-run measurement"
 }
