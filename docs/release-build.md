@@ -72,6 +72,20 @@ methods (byte for byte), the same comparison, and the same ILCD and SimaPro file
 978 s on the same machine under load. What differs between two runs is listed in
 [Exports](exports.md).
 
+**The hash of all scores holds on one kind of machine only.** `scores_sha256` in the manifest
+is the hash of every score in full precision. Two builds of one state on the same hardware
+give the same hash (builds 15 and 16 on GitHub). On other hardware they do not: build 17
+ran on a runner that GitHub hosts on Azure, build 20 of 16 November 2026 on one it hosts on
+AWS, and the two hashes differ, though the state is the same. Of the 28 scores each audit
+samples, the two builds agree to 2.8e-7 of the score at worst. So an equal hash proves equal
+scores, and a different hash proves nothing: the audit names the machine under
+`software.platform`, and that is the first thing to look at. The comparison of the two
+builds of one run is not affected. Both are made on one machine, and it counts a score as
+moved only above 1e-6 of the larger of the two, which lies above what the two kinds of
+machine differ by in that sample. A sample of 28 is not all 298,675 scores: what two builds
+of one state differ by over all of them has not been measured, and `before-after.json` says
+of itself that noise was not measured.
+
 ## One run summary
 
 `bafu-fixes run --summary FILE.json` writes one record that every later step reads:
@@ -230,6 +244,33 @@ In CI the command runs inside `scripts/release_build/transcript.py`. It changes 
 is printed. It writes every line with the seconds since the start, how the command ended and the
 SHA-256 of the lines to `transcript.json`, which is kept beside the manifest: also when the run
 failed, and when it was stopped.
+
+The comparison of the two builds also writes `before-after.json`: which datasets' results
+moved, in which impact categories, from what to what, and which import fix or patch explains
+it (`scripts/release_build/before_after_account.py`). It is in the format every Sentier
+dataset site reads ([Before and after](before-after.md)), and the site gives it a page of its
+own that the comparison step of the walk leads to. It lists at most 200 datasets with their
+results, the ones that moved furthest first, and says how many it left out.
+
+Every step is a cause with a claim that is worked out, not stated: the datasets whose supply
+chain reaches what the step changed, in the impact categories the change can affect. The
+file says how many datasets a step reaches and not which. Each value then has a class: a
+score that moved inside a step's reach is "as claimed", and one that moved outside every
+reach is "not claimed", which is what the comparison calls unexplained and fails on. The
+file is written after `comparison.json`: if it can't be written, the comparison stands and
+the run says why the page is not shown. Noise is not measured, because no state is built
+twice; the file says so.
+
+A run that also builds contributions writes one such file for each, the patched copy
+against the patched copy with that contribution (`<contribution>-before-after.json`), and
+`review.json`: the builds of the run, what each contains, and the pairs that were compared.
+The site then has a page on which a reader picks a contribution and is shown the two builds
+that differ by exactly it.
+
+Two builds are compared only if a difference between them can be a step's: both linked their
+elementary flows the same way, both or neither gave the flows that name a country that
+country's factor, and a build of the second linking still holds the file it was linked
+through. Otherwise the comparison says which of these fails and writes nothing.
 
 The run also writes its own account for the site, `run.json`, from the manifest
 (`scripts/release_build/run_summary.py`): each step with its result, its time, its figures and

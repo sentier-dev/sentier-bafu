@@ -74,6 +74,7 @@ def test_two_flows_of_one_country_share_one_target_and_a_second_pass_changes_not
     assert len(once.nodes) == 1 and once.flows == 2
     twice = locate(once.bridge, once.methods)
     assert twice.bridge == once.bridge
+    assert (dict(twice.nodes), twice.flows, twice.flows_without) == (dict(once.nodes), 2, 0)
     assert [dict(m.cfs) for m in twice.methods] == [dict(m.cfs) for m in once.methods]
 
 
@@ -120,6 +121,10 @@ def test_the_build_gives_the_flow_a_node_of_its_country_and_scores_with_its_fact
     assert (BIOSPHERE_DB, E1_DE) not in dict(ionising.cfs)  # that method does not know E1
     assert result.coverage.flows_located == 1
     assert result.links[B1].target_code == E1_DE and result.links[B2].target_code == E2
+    # the methods in which naming a country can move a score: climate has DE's factor,
+    # ionising radiation does not know the flow
+    assert result.coverage.located_by_method == ((CLIMATE, 1),)
+    assert f"a country's own factor in: {CLIMATE} (1)" in sentier_brightway.render(result.coverage)
 
 
 def test_the_score_follows_the_countrys_factor(data_root, tmp_path):
