@@ -240,7 +240,7 @@ def fixes_file(
     made = [
         fixes.fix(
             IMPORT_FIXES,
-            "The import fixes",
+            "Import fixes",
             kind="fix",
             about=f"{len(imports)} import fixes, applied together: they make BAFU's files "
             "readable to the importer and are applied before every patch.",
