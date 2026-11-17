@@ -89,6 +89,8 @@ class WholePath(unittest.TestCase):
         command = [sys.executable, str(ENTRY), "release", str(release), str(cls.linked_run)]
         command += ["--sample", str(sample), "--labels", str(labels), "--no-layers"]
         command += ["--partial-release", "--linking", "brightway-flows"]
+        # each fix on its own is measured once, under the default linking, above
+        command += ["--no-fixes"]
         cls.linked_done = subprocess.run([*command, *reuse()], capture_output=True, text=True)
         cls.linked = cls.linked_run / "provider"
 
@@ -118,6 +120,8 @@ class WholePath(unittest.TestCase):
                 "written files",
                 "patch run",
                 "comparison",
+                "fix builds",
+                "fixes",
                 "exports",
                 f"{LAYER} build",
                 f"{LAYER} comparison",
@@ -390,6 +394,36 @@ class WholePath(unittest.TestCase):
         own = json.loads((self.contribution / "diagnostics.json").read_text())
         self.assertEqual(len(own["states"]), 2)
         self.assertEqual(own["steps"][0]["kind"], "contribution")
+
+    def test_each_fix_is_measured_on_its_own_in_a_file_that_stays_here(self):
+        local = self.out / "local"
+        # `sentier-diagnostics check` holds the file of fixes to the chain and the matrix
+        # beside it, and the release with every fix to the chain's state after it
+        self.check_diagnostics(local / "diagnostics.json", local / "fixes.json")
+        fixes = self.load("local", "fixes.json")
+        index = self.load("fix-builds", "fix-builds.json")
+        self.assertEqual(self.load("local", "diagnostics.json")["audience"], "local")
+        # the import fixes alone, and alone with them each patch whose changes reach a result
+        self.assertEqual(index["builds"][0]["id"], "import-fixes")
+        reached = {patch for patch, n in index["reach"].items() if n}
+        self.assertTrue(reached)
+        self.assertEqual({b["id"] for b in index["builds"][1:]}, reached)
+        self.assertEqual(set(index["not_built"]), set(index["reach"]) - reached)
+        self.assertEqual({b["status"] for b in index["builds"]}, {"completed"})
+        # the base is BAFU's release as it is; every patch requires the import fixes
+        self.assertEqual((fixes["of"]["file"], fixes["of"]["base"]), ("diagnostics.json", "before"))
+        ids = [one["id"] for one in fixes["fixes"]]
+        self.assertEqual(ids, ["import-fixes", *index["reach"]])
+        self.assertTrue(all(one["requires"] == ["import-fixes"] for one in fixes["fixes"][1:]))
+        # a patch that was not built alone changes nothing; one that was, something
+        effect = {one["id"]: sum(map(len, one["effect"].values())) for one in fixes["fixes"]}
+        self.assertTrue(all(effect[patch] == 0 for patch in index["not_built"]))
+        self.assertTrue(any(effect[patch] for patch in reached))
+        self.assertEqual([(b["id"], b["state"]) for b in fixes["built"]], [("patched", "after")])
+        # a result for every dataset: none of it is kept with what may leave
+        kept = {path.name for path in (self.out / "results").iterdir()}
+        self.assertFalse(kept & {"fixes.json", "matrix.json", "fix-builds.json"})
+        self.assertEqual(self.load("results", "diagnostics.json")["audience"], "public")
 
     def test_the_builds_and_the_pairs_that_were_compared_are_kept_as_a_review(self):
         sys.path.insert(0, str(REPOSITORY / "scripts"))

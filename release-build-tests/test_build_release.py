@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -154,6 +155,24 @@ class Plan(unittest.TestCase):
         self.assertEqual((paths["project"], paths["label"]), ("mine", "x"))
         self.assertEqual(paths["brightway_dir"], Path("bw").resolve())
         self.assertEqual(paths["pinned_data"], Path("shared").resolve())
+
+
+class FixBuilds(unittest.TestCase):
+    def test_the_options_after_two_dashes_go_to_each_build(self):
+        seen = {}
+
+        def record(args):
+            seen.update(vars(args))
+            return 0
+
+        command = ["fix-builds", "release", "out", "--summary", "s.json", "--comparison", "c.json"]
+        command += ["--", "--tools", "t", "--linking", "brightway-flows"]
+        with unittest.mock.patch.object(build_release, "fix_builds", record):
+            self.assertEqual(build_release.main(command), 0)
+        # the options of the fix builds themselves, after the folders, are theirs
+        self.assertEqual((seen["summary"], seen["comparison"]), (Path("s.json"), Path("c.json")))
+        self.assertEqual((seen["release"], seen["out"]), (Path("release"), Path("out")))
+        self.assertEqual(seen["options"], ["--tools", "t", "--linking", "brightway-flows"])
 
 
 class Pins(unittest.TestCase):
