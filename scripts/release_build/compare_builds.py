@@ -195,7 +195,10 @@ def read_inventory(build: Path):
 def read_scores(build: Path):
     import pandas as pd
 
-    return pd.read_csv(build / "audit" / "scores.csv").set_index("code")
+    # Exactly, as written: a default reader rounds the last bit of about half the scores, and
+    # a change of one bit then reads as none (sentier-diagnostics, SPEC 16.4).
+    scores = pd.read_csv(build / "audit" / "scores.csv", float_precision="round_trip")
+    return scores.set_index("code")
 
 
 def read_json(path: Path) -> dict | None:
@@ -804,6 +807,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("candidate", type=Path, help="Build folder of the patched copy")
     parser.add_argument("--out", type=Path, required=True, help="JSON file to write")
     parser.add_argument(
+        "--diagnostics",
+        type=Path,
+        metavar="FILE",
+        help="Also write the comparison as a chain of states in the format of sentier-diagnostics "
+        "(release_build/diagnostics_account.py)",
+    )
+    parser.add_argument(
+        "--world-factors",
+        type=Path,
+        metavar="BUILD",
+        help="With --diagnostics: the build of BAFU's release with the world's factors, so that "
+        "the chain shows the countries' factors as a step of their own",
+    )
+    parser.add_argument(
         "--before-after",
         type=Path,
         metavar="FILE",
@@ -813,7 +830,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     parts: list = []
     try:
-        result = compare(args.baseline, args.candidate, parts if args.before_after else None)
+        wanted = args.before_after or args.diagnostics
+        result = compare(args.baseline, args.candidate, parts if wanted else None)
     except (CompareError, FileNotFoundError) as error:
         print(f"Comparison failed: {error}", file=sys.stderr)
         return 2
@@ -828,6 +846,29 @@ def main(argv: list[str] | None = None) -> int:
             args.before_after.unlink(missing_ok=True)
             name = args.before_after.name
             print(f"  {name} not written, the page of the comparison is not shown: {error}")
+    if args.diagnostics:
+        # The same comparison as a chain of states. If it can't be written, the comparison
+        # stands, and the line says why.
+        try:
+            from release_build import diagnostics_account
+
+            processes = read_inventory(args.candidate)[0].set_index("process_id")
+            item_units = {code: str(unit) for code, unit in processes["reference_unit"].items()}
+            # BAFU's sector of each dataset, the group a reader filters by
+            item_groups = {
+                code: str(sector).strip() or None
+                for code, sector in processes["sector"].items()
+                if isinstance(sector, str)
+            }
+            records, scores, _moved, names, units, steps, reach = parts
+            data = diagnostics_account.chain(
+                result, records, scores, names, units, steps, reach, item_units,
+                world=args.world_factors, candidate=args.baseline, item_groups=item_groups,
+            )  # fmt: skip
+            diagnostics_account.write(data, args.diagnostics)
+        except Exception as error:  # noqa: BLE001 - whatever stops this file, the comparison stands
+            args.diagnostics.unlink(missing_ok=True)
+            print(f"  {args.diagnostics.name} not written: {type(error).__name__}: {error}")
     climate = next(
         m for m in result["scores"]["methods"] if m["method"].endswith(":climate-change")
     )
