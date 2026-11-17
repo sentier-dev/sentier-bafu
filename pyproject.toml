@@ -37,9 +37,9 @@ brightway = [
     "pandas>=2.0",
     "pyarrow>=14",
     # What changed between the builds, before and after, in the format every Sentier dataset
-    # repository writes (sentier-dev/sentier-diagnostics). Standard library only. Pinned to a
-    # commit of its first version until a person merges and tags it; then to that tag.
-    "sentier-diagnostics @ git+https://github.com/sentier-dev/sentier-diagnostics@4b7e1c9bb2cf1783e2c3a6c0e31467373fd83ead",
+    # repository writes (sentier-dev/sentier-diagnostics). Standard library only. Pinned to the
+    # commit of main where its first version was merged, until it is tagged; then to that tag.
+    "sentier-diagnostics @ git+https://github.com/sentier-dev/sentier-diagnostics@117a586db3aa0bc30fbf87502b656bead5b7edc4",
 ]
 
 [project.scripts]

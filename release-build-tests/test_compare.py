@@ -594,7 +594,15 @@ class Tables(unittest.TestCase):
         groups = {item["id"]: item["group"] for item in data["items"]}
         self.assertEqual(groups.get("farm"), "agriculture")
         self.assertEqual([s["id"] for s in data["states"]], ["before", "after"])
+        # noise belongs to a state, and none is built twice in a run: each state says so, and a
+        # step takes the noise of its two states, not measured either
+        for state in data["states"]:
+            self.assertEqual(
+                (state["noise"]["measured"], state["noise"]["note"]),
+                (False, "No state is built twice in a run."),
+            )
         (step,) = data["steps"]
+        self.assertFalse(step["noise"]["measured"])
         # the claim is the comparison's reach (farm in climate; farm, gas and mix in fossil
         # resources), published as a count only
         self.assertEqual((step["claim"]["reach"], step["claim"]["scope"][0]["items"]), (3, None))
@@ -637,6 +645,24 @@ class Tables(unittest.TestCase):
         narrowed = {method: {} for method in reach}
         with self.assertRaisesRegex(account.ChainError, "outside the reach of every step"):
             account.chain(comparison, records, scores, names, {}, steps, narrowed, units)
+
+    def test_scores_are_read_exactly_on_both_sides(self):
+        import tempfile
+
+        from release_build import diagnostics_account as account
+
+        # A default CSV reader reads this score one bit off. A change of one bit would then be
+        # merged with no change, and a score the two sides read differently would read as one.
+        written = "449.49106478873813"
+        with tempfile.TemporaryDirectory() as tmp:
+            build = Path(tmp)
+            (build / "audit").mkdir()
+            (build / "audit" / "scores.csv").write_text(f"code,climate\nfarm,{written}\n")
+            exact = float(written)
+            self.assertEqual(compare.read_scores(build).at["farm", "climate"], exact)
+            self.assertEqual(
+                account.scores_of(build, ["climate"], ["farm"])["climate"]["farm"], exact
+            )
 
     def test_a_contribution_is_compared_with_the_patched_copy_under_its_own_name(self):
         from release_build import before_after_account

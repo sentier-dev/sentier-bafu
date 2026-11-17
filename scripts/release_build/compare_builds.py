@@ -195,7 +195,10 @@ def read_inventory(build: Path):
 def read_scores(build: Path):
     import pandas as pd
 
-    return pd.read_csv(build / "audit" / "scores.csv").set_index("code")
+    # Exactly, as written: a default reader rounds the last bit of about half the scores, and
+    # a change of one bit then reads as none (sentier-diagnostics, SPEC 16.4).
+    scores = pd.read_csv(build / "audit" / "scores.csv", float_precision="round_trip")
+    return scores.set_index("code")
 
 
 def read_json(path: Path) -> dict | None:

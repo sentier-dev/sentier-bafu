@@ -285,9 +285,22 @@ and each step is held against its claim:
   above, published as a count. The file is refused if it finds a value moved outside every
   reach where the comparison found none unexplained.
 
+Noise belongs to a state: what two builds of it differ by. A step is compared with the noise
+of its two states. No state is built twice in a run, so each state says its noise was not
+measured, and so does each step.
+
+Scores are read exactly, as they were written, in this file and in `comparison.json` alike.
+pandas' default CSV reader reads about half of the 298,675 scores of BAFU:2026 v1 one bit off,
+which merges distinct results: read that way, patch 0001 changes 79 results bit for bit; read
+exactly, 86. What is counted as moved does not change, since a score moves only above 1e-6 of
+it (75 either way), and a smaller change is "agrees" in the chain, bit-identical or not. What
+changes is the count of differences below that threshold in `comparison.json` (4 before, 11),
+and which results a local matrix marks as bit-identical to the state before, which a file of
+fixes is measured on.
+
 A contribution's file (`<contribution>-diagnostics.json`) is the patched copy, then the
-patched copy with that contribution. The package is pinned by commit in `pyproject.toml` until
-its first version is merged and tagged. The site does not show the file yet: its page is being
+patched copy with that contribution. The package is pinned in `pyproject.toml` to the commit
+of its `main` where its first version was merged, until it is tagged. The site does not show the file yet: its page is being
 built in sentier-diagnostics, from the trial dashboard of sentier-bafu-agribalyse, and until
 then `before-after.json` and its page stay as they are.
 

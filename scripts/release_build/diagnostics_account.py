@@ -21,7 +21,13 @@ The chain of a run's own comparison has three states and two steps:
 Without a build of the world's factors the chain has the last two states only. A
 contribution's comparison is the patched copy, then the patched copy with that contribution.
 
-Noise is not measured: no state is built twice in a run. The file says so.
+Noise belongs to a state: two builds of it differ by it (sentier-diagnostics, SPEC 5.3). It is
+not measured here, since no state is built twice in a run, and each state says so.
+
+Scores are read exactly, as they were written. A default CSV reader rounds the last bit of
+about half of them, which merges distinct results and drops changes: read that way, patch
+0001 of BAFU:2026 v1 changes 79 results instead of 86 (SPEC 16.4). Both sides of every
+comparison are read the same way (`compare_builds.read_scores`).
 """
 
 import json
@@ -59,7 +65,8 @@ def scores_of(build: Path, methods: list[str], codes: list[str]) -> dict:
     """`{method: {code: score}}` of one build's audit, for the datasets compared."""
     import pandas as pd
 
-    frame = pd.read_csv(Path(build) / "audit" / "scores.csv").set_index("code")
+    frame = pd.read_csv(Path(build) / "audit" / "scores.csv", float_precision="round_trip")
+    frame = frame.set_index("code")
     missing = [m for m in methods if m not in frame.columns]
     if missing:
         raise ChainError(f"{build}: the audit has no scores in {', '.join(missing)}")
@@ -121,6 +128,7 @@ def chain(
     title, one, other = before_after_account.sides(*records)
     contribution = (records[1] or {}).get("contribution")
     tolerance = build_chain.tolerance(comparison["scores"]["tolerance"], "declared", TOLERANCE_NOTE)
+    # noise belongs to a state; none is built twice in a run
     not_measured = build_chain.noise(note="No state is built twice in a run.")
 
     def state(id_, side, record):
@@ -131,8 +139,9 @@ def chain(
             "machine": tools.get("platform"),
         }
         return build_chain.state(
-            id_, side[0], about=side[1], identity={k: str(v) for k, v in identity.items() if v}
-        )
+            id_, side[0], about=side[1], identity={k: str(v) for k, v in identity.items() if v},
+            noise=not_measured,
+        )  # fmt: skip
 
     fixes = [s for s in steps.values() if s.get("kind") in ("import fix", "patch")]
     if contribution:
@@ -144,7 +153,7 @@ def chain(
         last = build_chain.step(
             "contribution", f"Contribution {contribution['id']}", kind="contribution",
             about=(contribution.get("title") or None), claim=reach_claim(reach, step_text),
-            tolerance=tolerance, noise=not_measured,
+            tolerance=tolerance,
         )  # fmt: skip
     else:
         n_fix = sum(1 for s in fixes if s["kind"] == "import fix")
@@ -158,7 +167,7 @@ def chain(
                 "Every dataset whose supply chain reaches what an import fix or patch changed may "
                 "move, in the categories the change can affect. Nothing else moves.",
             ),
-            tolerance=tolerance, noise=not_measured,
+            tolerance=tolerance,
         )  # fmt: skip
     states = [state("before", one, records[0]), state("after", other, records[1])]
     values = {"before": before, "after": after}
@@ -190,7 +199,7 @@ def chain(
                 [claims.scope(categories, "*", "any", None, claims.MAY)] if categories else [],
                 by=claims.origin("code", "install report, located_by_method"),
             ),
-            tolerance=tolerance, noise=not_measured,
+            tolerance=tolerance,
         )  # fmt: skip
         world_record = read_json(Path(world) / "build.json") or {}
         world_side = (
