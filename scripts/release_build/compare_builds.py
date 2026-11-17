@@ -852,14 +852,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from release_build import diagnostics_account
 
-            processes = read_inventory(args.candidate)[0].set_index("process_id")
-            item_units = {code: str(unit) for code, unit in processes["reference_unit"].items()}
-            # BAFU's sector of each dataset, the group a reader filters by
-            item_groups = {
-                code: str(sector).strip() or None
-                for code, sector in processes["sector"].items()
-                if isinstance(sector, str)
-            }
+            # each dataset's unit, and BAFU's sector of it: the group a reader filters by
+            item_units, item_groups = diagnostics_account.items_of(args.candidate)
             records, scores, _moved, names, units, steps, reach = parts
             data = diagnostics_account.chain(
                 result, records, scores, names, units, steps, reach, item_units,

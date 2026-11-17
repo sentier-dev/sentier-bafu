@@ -10,6 +10,7 @@ databases and files. Nothing of the inventory. A step whose record is missing or
 read prints nothing: these lines never fail a run.
 """
 
+import json
 from pathlib import Path
 
 try:
@@ -117,6 +118,46 @@ def exports(folder: Path) -> list[str]:
     return lines
 
 
+def fix_builds(folder: Path) -> list[str]:
+    """Each fix built on its own: what each build holds, and the patches left out."""
+    index = json.loads((folder / "fix-builds.json").read_text())
+    lines = []
+    for one in index["builds"]:
+        lines.append(f"  {one['label']}: {one['status']} in {one['seconds']} s")
+        lines += [f"  {line}" for line in build(folder / one["folder"])]
+    if index["not_built"]:
+        lines.append(
+            f"  not built alone, since none of their changes reaches a result: "
+            f"{', '.join(index['not_built'])}"
+        )
+    return lines
+
+
+def fixes(file: Path) -> list[str]:
+    """The file of fixes, in counts: what each fix changes, and the built sets. It stays on
+    the machine; no dataset is named."""
+    data = json.loads(file.read_text())
+
+    def entries(sparse: dict) -> int:
+        return sum(len(v) for v in sparse.values())
+
+    lines = [
+        f"  {len(data['fixes']):,} fixes over {len(data['items']):,} datasets in "
+        f"{len(data['indicators']):,} categories, measured against "
+        f"{data['of']['base']!r} of {data['of']['file']}, checked"
+    ]
+    for one in data["fixes"]:
+        lines.append(f"  {one['id']:<44} {entries(one['effect']):>9,} results it changes")
+    for one in data["built"]:
+        lines.append(
+            f"  built: {one['label']}, {entries(one['results']):,} results it changes, "
+            "held to the chain and to the sum of the fixes"
+        )
+    pairs = data["interactions"]["pairs"]
+    lines.append(f"  pairs of fixes that can interact: {len(pairs):,}")
+    return lines
+
+
 def lines(name: str, out: Path) -> list[str]:
     """The lines of one step of a build that wrote into `out`. Never raises."""
     try:
@@ -130,6 +171,10 @@ def lines(name: str, out: Path) -> list[str]:
             return comparison(out / "comparison.json")
         if name == "exports":
             return exports(out / "exports" / "patched")
+        if name == "fix builds":
+            return fix_builds(out / "fix-builds")
+        if name == "fixes":
+            return fixes(out / "local" / "fixes.json")
         for ending, make, place in (
             (" build", build, "build"),
             (" comparison", comparison, "comparison.json"),

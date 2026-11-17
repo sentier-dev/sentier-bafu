@@ -39,6 +39,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from release_build import before_after_account  # noqa: E402
 
 LISTED = before_after_account.LISTED
+#: The files of a local chain: the chain, and its full matrix beside it. They hold a result
+#: for every dataset, so they stay on the machine that built them (`chain(..., local=True)`).
+CHAIN_FILE = "diagnostics.json"
+MATRIX_FILE = "matrix.json"
 #: What the comparison counts as moved. The steps of the chain use it too, so that a value
 #: the comparison calls unexplained is never one the chain calls "agrees".
 TOLERANCE_NOTE = "the threshold of the comparison of two builds (compare_builds.py)"
@@ -74,6 +78,28 @@ def scores_of(build: Path, methods: list[str], codes: list[str]) -> dict:
         m: {c: (float(frame.at[c, m]) if c in frame.index else None) for c in codes}
         for m in methods
     }
+
+
+def items_of(build: Path) -> tuple[dict[str, str], dict[str, str | None]]:
+    """The reference unit of each dataset of a build, and its sector: the group a reader
+    filters by (a dataset without a sector has none)."""
+    from release_build import compare_builds
+
+    processes = compare_builds.read_inventory(Path(build))[0].set_index("process_id")
+    units = {code: str(unit) for code, unit in processes["reference_unit"].items()}
+    groups = {
+        code: str(sector).strip() or None
+        for code, sector in processes["sector"].items()
+        if isinstance(sector, str)
+    }
+    return units, groups
+
+
+def tolerance_of(comparison: dict) -> dict:
+    """The tolerance of a step: the comparison's own threshold."""
+    from sentier_diagnostics import chain as build_chain
+
+    return build_chain.tolerance(comparison["scores"]["tolerance"], "declared", TOLERANCE_NOTE)
 
 
 def located_by_method(build: Path) -> list[str] | None:
@@ -114,11 +140,17 @@ def chain(
     candidate: Path | None = None,
     listed: int = LISTED,
     item_groups: dict[str, str | None] | None = None,
-) -> dict:
+    local: bool = False,
+) -> dict | tuple[dict, dict]:
     """The chain of one comparison, checked by sentier-diagnostics. `world` is the build of
     BAFU's release with the world's factors, `candidate` the build whose install report names
     the categories of the countries' factors (the build of BAFU's release). `item_groups` is
-    each dataset's sector, by which a reader filters."""
+    each dataset's sector, by which a reader filters.
+
+    `local`: the chain for this machine only, and its full matrix, as `(chain, matrix)`: every
+    dataset with its result in every state, and each claim with its list of datasets. A file
+    of fixes hangs on it (`fixes_account.py`). Without it, the chain that may be published:
+    the datasets listed, each claim's size only."""
     from sentier_diagnostics import chain as build_chain
     from sentier_diagnostics import claims
 
@@ -127,7 +159,7 @@ def chain(
     codes = sorted(set().union(*(set(v) for v in before.values())))
     title, one, other = before_after_account.sides(*records)
     contribution = (records[1] or {}).get("contribution")
-    tolerance = build_chain.tolerance(comparison["scores"]["tolerance"], "declared", TOLERANCE_NOTE)
+    tolerance = tolerance_of(comparison)
     # noise belongs to a state; none is built twice in a run
     not_measured = build_chain.noise(note="No state is built twice in a run.")
 
@@ -217,7 +249,12 @@ def chain(
             "linked on the flow as BAFU declared it, so the correction changes the label and "
             "moves no result."
         )
-    data = build_chain.build(
+    make = (
+        (lambda *a, **k: build_chain.build_with_matrix(*a, matrix_file=MATRIX_FILE, **k))
+        if local
+        else build_chain.build
+    )
+    found = make(
         title,
         about="The builds of one run, compared score by score in every impact category.",
         indicators=[
@@ -238,10 +275,11 @@ def chain(
         },  # fmt: skip
         item_word=("dataset", "datasets"),
         listed=listed,
-        audience="public",
-        claim_lists=False,
+        audience="local" if local else "public",
+        claim_lists=local,
         notes=notes,
     )
+    data = found[0] if local else found
     # the chain and the comparison must agree on what nothing explains, or neither is believed
     unexplained = sum(
         m["moved_by_step"].get("unexplained", 0) for m in comparison["scores"]["methods"]
@@ -255,10 +293,17 @@ def chain(
             f"{outside} values moved outside the reach of every step, and the comparison calls "
             f"{unexplained} unexplained"
         )
-    return data
+    return found
 
 
 def write(data: dict, path: Path) -> Path:
     from sentier_diagnostics import chain as build_chain
 
     return build_chain.write(data, Path(path))
+
+
+def write_matrix(full: dict, path: Path) -> Path:
+    """The full matrix of a local chain, beside it."""
+    from sentier_diagnostics import matrix
+
+    return matrix.write(full, Path(path))
