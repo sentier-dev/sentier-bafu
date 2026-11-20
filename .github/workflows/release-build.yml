@@ -37,6 +37,7 @@ on:
       - "scripts/check_patched_release.py"
       - "scripts/build_release.py"
       - "scripts/export_release.py"
+      - "scripts/export_release.py.lock"
       - "scripts/release_build/**"
       - "community/layers/**"
       - "pyproject.toml"

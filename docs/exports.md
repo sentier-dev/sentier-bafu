@@ -23,7 +23,7 @@ Or on its own, on a database that `build_release.py build` wrote. The build's `b
 names everything the step needs under `export`:
 
 ```sh
-uv run --python 3.12 scripts/export_release.py \
+uv run --locked --python 3.12 scripts/export_release.py \
     --brightway-dir output/patched/brightway --project bafu-2026-v1-patched \
     --database bafu-2026-v1-patched --database ef-3.1-biosphere \
     --database bafu-2026-v1-patched-residual \
@@ -34,6 +34,14 @@ uv run --python 3.12 scripts/export_release.py \
 
 Add `--ecospold output/patched/release`, the folder the patch run wrote, to get the
 ecoSpold v1 archive too. The whole path always does, for the patched copy.
+
+The script names its requirements at its top, and `scripts/export_release.py.lock` pins them
+with everything they pull in. `--locked` uses exactly those versions and stops when the lock
+no longer fits the requirements. After changing a requirement, write the lock again:
+
+```sh
+uv lock --script scripts/export_release.py --python 3.12
+```
 
 `--brightway-dir` is required: the step reads only the Brightway folder you name and never
 the projects in the default location. The output folder must be new or empty. `--summary`

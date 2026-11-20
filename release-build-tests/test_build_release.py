@@ -515,6 +515,31 @@ class ExportCommand(unittest.TestCase):
     def test_a_build_that_wrote_no_summary_is_not_exported(self):
         self.assertIsNone(self.command(summary=None))
 
+    def test_the_export_runs_with_the_locked_versions_of_its_requirements(self):
+        """The importer and the installer run at pinned commits with their locks. The export
+        step did not: it resolved its requirements anew on every run, a tagged one too."""
+        import re
+        import tomllib
+
+        command = self.command()
+        self.assertEqual(command[:5], ["uv", "run", "--locked", "--python", "3.12"])
+        script = build_release.EXPORT
+        lock = script.with_name(script.name + ".lock")
+        self.assertTrue(lock.is_file(), "uv lock --script scripts/export_release.py --python 3.12")
+        header = script.read_text().split("# ///")[1]
+        wanted = re.findall(r'#\s+"([^"]+)",', header)
+        self.assertGreaterEqual(len(wanted), 7)
+        locked = {package["name"]: package for package in tomllib.loads(lock.read_text())["package"]}
+        for requirement in wanted:
+            name = re.split(r"[ @=<>!~]", requirement, maxsplit=1)[0]
+            self.assertIn(name, locked, f"{name} is required and not in the lock")
+            exact = re.search(r"==([\w.]+)$", requirement)
+            if exact:
+                self.assertEqual(locked[name]["version"], exact.group(1), name)
+            commit = re.search(r"\.git@([0-9a-f]{40})$", requirement)
+            if commit:
+                self.assertIn(commit.group(1), locked[name]["source"]["git"], name)
+
 
 class Syntax(unittest.TestCase):
     def test_the_build_files_are_python_3_12(self):
