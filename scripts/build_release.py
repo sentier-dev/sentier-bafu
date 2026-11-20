@@ -941,15 +941,9 @@ def review_of(out: Path, provider: Path, patched: Path, contributions, summary: 
     without a contribution compared one pair, and its comparison says all there is."""
 
     def read(path):
-        # Two clauses, not one of two errors: the formatter writes such a clause without its
-        # parentheses, which Python 3.12 can't read, and this script runs on 3.12.
         try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
-            return None
-        try:
-            return json.loads(text)
-        except ValueError:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
             return None
 
     builds = [

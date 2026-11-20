@@ -91,6 +91,16 @@ extend-exclude = [
     "scripts/triage.py",
 ]
 
+[tool.ruff.per-file-target-version]
+# The build, the export, the site and the records start on Python 3.12 (`uv run --python
+# 3.12`, or the runner's own Python); the package is 3.14, and ruff takes its target from
+# `requires-python`. For 3.14 the formatter writes `except A, B:` without parentheses,
+# which 3.12 cannot read. With the target said here it keeps them, and `ruff check`
+# reports the form without them as a syntax error.
+"scripts/**" = "py312"
+"release-build-tests/**" = "py312"
+"export-tests/**" = "py312"
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 

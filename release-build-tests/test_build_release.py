@@ -41,14 +41,35 @@ def options(**values) -> argparse.Namespace:
 
 
 class OlderPython(unittest.TestCase):
-    """The build and the export start on Python 3.12, and the formatter writes for 3.14."""
+    """The build, the export, the site and the records start on Python 3.12; the package is
+    for 3.14. ruff is told so (`[tool.ruff.per-file-target-version]`): it keeps the
+    parentheses of `except (A, B):` and reports the form without them."""
 
-    def test_no_script_catches_two_errors_without_parentheses(self):
+    def test_ruff_reads_the_scripts_as_python_3_12(self):
+        import tomllib
+
+        ruff = tomllib.loads((REPOSITORY / "pyproject.toml").read_text())["tool"]["ruff"]
+        self.assertEqual(
+            ruff["per-file-target-version"],
+            {"scripts/**": "py312", "release-build-tests/**": "py312", "export-tests/**": "py312"},
+        )
+
+    def test_no_script_that_ruff_leaves_out_catches_two_errors_without_parentheses(self):
+        """ruff does not read the scripts its configuration leaves out, and they start on the
+        runner's own Python too. For them the clause is looked for here."""
         import re
+        import tomllib
 
-        # every script: the site's and the records' start with the runner's own Python too
-        files = sorted((REPOSITORY / "scripts").rglob("*.py"))
-        self.assertGreater(len(files), 40)
+        ruff = tomllib.loads((REPOSITORY / "pyproject.toml").read_text())["tool"]["ruff"]
+        left_out = [entry for entry in ruff["extend-exclude"] if entry.startswith("scripts/")]
+        files = sorted(
+            file
+            for entry in left_out
+            for file in (
+                (REPOSITORY / entry).rglob("*.py") if entry.endswith("/") else [REPOSITORY / entry]
+            )
+        )
+        self.assertGreater(len(files), 10)
         clause = re.compile(r"^\s*except\s+[^(:\s][^:(]*,", re.MULTILINE)
         for file in files:
             found = clause.findall(file.read_text(encoding="utf-8"))
