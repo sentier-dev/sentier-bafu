@@ -29,7 +29,7 @@ on:
       - "scripts/compare_located_factors.py"
       - "release-build-tests/**"
       - "export-tests/**"
-      - "src/sentier_brightway/**"
+      - "src/bafu_brightway/**"
       - "community/layers/**"
       - "pyproject.toml"
       - "uv.lock"

@@ -1,12 +1,10 @@
 [project]
 name = "bafu-community-fixes"
 version = "0.1.0"
-description = "Community patches for the BAFU LCA database (EcoSpold 1 in, EcoSpold 1 out), and the installer that writes the result into Brightway"
+description = "Community patches for the BAFU LCA database (EcoSpold 1 in, EcoSpold 1 out), and what the build needs to write the result into Brightway"
 readme = "README.md"
 license = "MIT"
-# The Brightway installer (`src/sentier_brightway`) is the code of sentier-brightway, moved
-# here with its history. It keeps its own copyright line, in its own licence file.
-license-files = ["LICENSE", "src/sentier_brightway/LICENSE"]
+license-files = ["LICENSE"]
 authors = [
     { name = "Chris Mutel", email = "cmutel@gmail.com" },
     { name = "Laurenz Bougan", email = "laurenz@d-d-s.ch" },
@@ -25,10 +23,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# What the Brightway installer (`sentier_brightway`, the command `sentier-brightway`) needs
-# on top of the patch tool. The patch tool runs without it; the build of a Brightway
-# database (`scripts/build_release.py`) and the installer's tests need it.
+# What `bafu_brightway` (the command `bafu-brightway`) needs on top of the patch tool: the
+# Brightway installer, sentier-brightway, pinned by commit, and what its writer needs. The
+# patch tool runs without it; the build of a Brightway database (`scripts/build_release.py`)
+# and the tests in `installer-tests/` need it.
 brightway = [
+    "sentier-brightway @ git+https://github.com/sentier-dev/sentier-brightway@54861b306b631a02774576b52643471bfe2ed8c0",
     "bw2calc>=2.0",
     "bw2data>=4.0",
     "bw_processing>=1.0",
@@ -45,15 +45,16 @@ brightway = [
 [project.scripts]
 bafu-fixes = "bafu_community_fixes.cli:main"
 bafu-fixes-tui = "bafu_community_fixes.tui:main"
-sentier-brightway = "sentier_brightway.cli:main"
+bafu-brightway = "bafu_brightway.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.11.0,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-# Two packages in one distribution: the patch tool and the Brightway installer.
-module-name = ["bafu_community_fixes", "sentier_brightway"]
+# Two packages in one distribution: the patch tool, and what this repository adds to the
+# Brightway installer (the countries' factors, the second linking, its own data pins).
+module-name = ["bafu_community_fixes", "bafu_brightway"]
 
 [dependency-groups]
 dev = [

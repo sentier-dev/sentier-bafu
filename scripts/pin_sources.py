@@ -1,4 +1,4 @@
-"""Regenerate src/sentier_brightway/sources.toml from the data repos' main branches.
+"""Regenerate src/bafu_brightway/sources.toml from the data repos' main branches.
 
 Usage: uv run python scripts/pin_sources.py [--ref sentier-inventory=<sha> ...]
 
@@ -33,7 +33,7 @@ REPOS = {
     ),
     "sentier-mappings": ("sentier-dev/sentier-mappings", ("data/",), (".json",)),
 }
-OUT = Path(__file__).resolve().parents[1] / "src" / "sentier_brightway" / "sources.toml"
+OUT = Path(__file__).resolve().parents[1] / "src" / "bafu_brightway" / "sources.toml"
 
 
 def _headers() -> dict[str, str]:

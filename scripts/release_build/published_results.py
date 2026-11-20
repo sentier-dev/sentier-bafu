@@ -1,6 +1,6 @@
 """Summarise the installer's comparison with BAFU's published LCIA results.
 
-`sentier-brightway backtest` scores every dataset in the 25 EF 3.1 categories and joins
+`bafu-brightway backtest` scores every dataset in the 25 EF 3.1 categories and joins
 BAFU's results workbook by dataset name and location. It writes `vs_bafu.csv` (one row per
 dataset, the difference in percent per category) and `run_report.json`. This reads both and
 writes a summary: how many datasets were joined, and per category how many were compared,
@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     import pandas as pd
 
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("folder", type=Path, help="Output folder of `sentier-brightway backtest`")
+    parser.add_argument("folder", type=Path, help="Output folder of `bafu-brightway backtest`")
     parser.add_argument("--out", type=Path, required=True, help="Summary JSON to write")
     args = parser.parse_args(argv)
     counts = json.loads((args.folder / "run_report.json").read_text()).get("counts", {})
