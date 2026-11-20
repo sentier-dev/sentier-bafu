@@ -41,6 +41,29 @@ def options(**values) -> argparse.Namespace:
 
 
 class Plan(unittest.TestCase):
+    def test_a_build_takes_the_countries_factors_unless_it_is_told_not_to(self):
+        """A flow that names a country takes that country's factor. For land use that is
+        further from BAFU's published results, so the build has the installer's switch."""
+        self.assertTrue(build_release.plan(options())["located"])
+        self.assertTrue(build_release.plan(options(skip_located=False))["located"])
+        for no_patches, said in (
+            (False, "patched copy (community patches applied), the world's factors"),
+            (True, "provider release, the world's factors"),
+        ):
+            paths = build_release.plan(options(no_patches=no_patches, skip_located=True))
+            self.assertFalse(paths["located"])
+            self.assertEqual(paths["label"], said)
+        parser = build_release.arguments()
+        build = parser.parse_args(["build", "release", "out", "--skip-located"])
+        whole = parser.parse_args(["release", "release", "out", "--skip-located"])
+        self.assertTrue(build.skip_located and whole.skip_located)
+        self.assertFalse(parser.parse_args(["release", "release", "out"]).skip_located)
+        # the whole path hands the switch to both builds, and a build to the installer
+        source = (REPOSITORY / "scripts" / "build_release.py").read_text()
+        self.assertIn('options += ["--skip-located"] if args.skip_located else []', source)
+        self.assertEqual(source.count('*([] if paths["located"] else ["--skip-located"]),'), 2)
+        self.assertIn('"located": paths["located"],', source)
+
     def test_a_patched_build_is_named_as_patched(self):
         paths = build_release.plan(options())
         self.assertTrue(paths["patched"])

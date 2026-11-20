@@ -491,8 +491,11 @@ a second reading of what such a flow means:
 Water use comes much closer. Land use moves away for the five datasets: for the two flows
 of rail land, BAFU's results follow the factor without a location.
 
-`sentier-brightway db --skip-located` builds as before. The build has no such option: a
-build records under `install` that its flows took the factors of countries.
+`sentier-brightway db --skip-located` builds as before, and so do `build_release.py build
+--skip-located` and `build_release.py release --skip-located`, which hand the switch to the
+installer for both builds. A build records under `install.located` whether its flows took
+the factors of countries, and its label says "the world's factors" when they did not.
+Without the switch the countries' factors are on, for water use and for land use alike.
 
 ## The second linking: through Brightway Flows
 

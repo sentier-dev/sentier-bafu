@@ -265,7 +265,11 @@ def plan(args: argparse.Namespace) -> dict:
             f"patched copy with contribution {contribution['contribution']} "
             f"({contribution['name']}), {standing(contribution)}"
         )
+    located = not getattr(args, "skip_located", False)
+    if not located:
+        default_label += ", the world's factors"
     return {
+        "located": located,
         "label": args.label or default_label,
         "patched": patched,
         "contribution": contribution,
@@ -374,7 +378,7 @@ def build(args: argparse.Namespace) -> int:
         "install": {
             "source": database,
             "flow_terms_of": PROVIDER_SOURCE if paths["patched"] else None,
-            "located": True,
+            "located": paths["located"],
             "flow_links": {"file": FLOW_LINKS.name, "sha256": adapter.sha256_file(FLOW_LINKS)}
             if flow_links
             else None,
@@ -557,6 +561,7 @@ def build(args: argparse.Namespace) -> int:
                 *("--report", str(install_report)),
                 *flows_of,
                 *flow_links,
+                *([] if paths["located"] else ["--skip-located"]),
             ),
             bw_env,
         )
@@ -617,6 +622,7 @@ def build(args: argparse.Namespace) -> int:
                     *("--xlsx", str(workbook.resolve())),
                     *flows_of,
                     *flow_links,
+                    *([] if paths["located"] else ["--skip-located"]),
                 ),
                 project.env(),
             )
@@ -1001,6 +1007,7 @@ def release(args: argparse.Namespace) -> int:
     options = [*shared, "--pinned-data", str((args.pinned_data or out / "pinned-data").resolve())]
     options += ["--labels", str(args.labels.resolve()), "--xsd-check", args.xsd_check]
     options += ["--linking", args.linking]
+    options += ["--skip-located"] if args.skip_located else []
     options += ["--sample", str(args.sample.resolve())] if args.sample else []
     if args.published_results:
         options += ["--published-results", str(args.published_results.resolve())]
@@ -1220,7 +1227,14 @@ def arguments() -> argparse.ArgumentParser:
         "flows lose their factor under it, and nothing built with it is kept under a tag "
         "(docs/brightway-build.md)."
     )
+    located_help = (
+        "Give every elementary flow the factor without a location, also a flow that names a "
+        "country (`Water, CH`). Without this option such a flow takes its country's factor "
+        "where a method has one: water use comes closer to BAFU's published results, land "
+        "use moves away for five datasets (docs/brightway-build.md)."
+    )
     b.add_argument("--linking", choices=LINKINGS, default=LINKINGS[0], help=linking_help)
+    b.add_argument("--skip-located", action="store_true", help=located_help)
     b.add_argument("--only", nargs="+", metavar="ID", help="Apply only these patches")
     b.add_argument("--skip", nargs="+", metavar="ID", help="Don't apply these patches")
     b.add_argument(
@@ -1317,6 +1331,7 @@ def arguments() -> argparse.ArgumentParser:
         "(repeatable); its database and exports say if nobody has",
     )
     r.add_argument("--linking", choices=LINKINGS, default=LINKINGS[0], help=linking_help)
+    r.add_argument("--skip-located", action="store_true", help=located_help)
     r.add_argument("--xsd-check", choices=("off", "end", "every-step"), default="every-step")
     r.add_argument("--sample", type=Path, help="Datasets the audit scores (see `build`)")
     r.add_argument("--labels", type=Path, default=LABELS, help="See `build`")
