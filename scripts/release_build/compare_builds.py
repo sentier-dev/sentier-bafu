@@ -181,6 +181,25 @@ def explain(
     return sorted(known) if groups <= together else []
 
 
+def could_explain(
+    groups: set[str], steps: list[str], table: str, fields: dict[str, dict] | None = None
+) -> list[str]:
+    """Every recorded step that could account for a change to `groups` on its own: the steps
+    `explain` chooses among. It names the narrowest; the others are passed over."""
+    fields = STEP_FIELDS if fields is None else fields
+    return sorted(step for step in steps if step in fields and groups <= fields[step][table])
+
+
+def passed_over_seeds(seeds: dict[str, dict[str, set[str]]]) -> dict[str, int]:
+    """Per step that was passed over for a row a score follows: in how many datasets, at the
+    most over the methods. Such a step is given no reach by the comparison and may have one."""
+    found: dict[str, int] = {}
+    for by_step in seeds.values():
+        for step, datasets in by_step.items():
+            found[step] = max(found.get(step, 0), len(datasets))
+    return dict(sorted(found.items()))
+
+
 def may_change(step: str, kinds: set[str], fields: dict[str, dict] | None = None) -> bool:
     """Whether `step` changes exchanges of these kinds at all (`rows` in the table of steps)."""
     rows = ((STEP_FIELDS if fields is None else fields).get(step) or {}).get("rows")
@@ -324,7 +343,7 @@ def compare_rows(
         frozenset(g for g, mask in changed_groups.items() if mask[i]) for i in changed.index
     ]
 
-    by_step, unexplained, rows = defaultdict(Counter), [], []
+    by_step, unexplained, rows, passed_over = defaultdict(Counter), [], [], []
     for row in changed.itertuples(index=False):
         kinds = {
             kind for kind in (row.flow_type_before, row.flow_type_after) if isinstance(kind, str)
@@ -343,6 +362,11 @@ def compare_rows(
             by_step[label][group] += 1
         by_step[label]["rows"] += 1
         rows.append((row, found))
+        # the steps on this dataset that could have made the change too, and were not named
+        also = [s for s in could_explain(set(row.groups), recorded, "exchange", fields)
+                if s not in found]  # fmt: skip
+        if found and also:
+            passed_over.append((row, also))
         if not found:
             unexplained.append({"dataset": row.process_id, "fields": sorted(row.groups)})
     datasets_by_step = defaultdict(set)
@@ -381,6 +405,9 @@ def compare_rows(
             "unexplained_count": len(unexplained) + len(process_unexplained),
         },
         "rows": rows,
+        # changed rows with the steps that could explain them too and were passed over for a
+        # narrower one: `(row, steps)`, as `rows`
+        "passed_over": passed_over,
     }
 
 
@@ -781,12 +808,15 @@ def compare(baseline: Path, candidate: Path, account_out: list | None = None) ->
 
     base_scores, cand_scores = read_scores(baseline), read_scores(candidate)
     seeds = relevant_seeds(rows["rows"], effective, list(base_scores.columns))
+    passed_over = relevant_seeds(rows["passed_over"], effective, list(base_scores.columns))
     names = cand[0].set_index("process_id")[["name", "location"]].to_dict("index")
     moved: dict[str, dict] = {}
     reach: dict[str, dict] = {}
     scores = compare_scores(
         base_scores, cand_scores, seeds, consumer_graph(base[1], cand[1]), names, moved, reach
     )
+    # steps that the attribution passed over for a row a score follows: `{step: datasets}`
+    scores["passed_over"] = passed_over_seeds(passed_over)
     audits = {
         label: json.loads((build / "audit" / "audit.json").read_text())
         for label, build in (("baseline", baseline), ("candidate", candidate))

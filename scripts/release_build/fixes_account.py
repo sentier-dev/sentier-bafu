@@ -80,44 +80,28 @@ def reached(comparison: dict) -> dict[str, int]:
     return out
 
 
-def changes_a_score_field(step: dict) -> bool:
-    """Whether the patch tool's own record of a step says it changed a field of an exchange
-    that a score is computed from (an amount, a flow, a unit, the kind of exchange)."""
-    changed = compare.derived_fields(step.get("fields") or {})["exchange"]
-    return bool(changed & compare.SCORE_RELEVANT)
+def passed_over(comparison: dict) -> dict[str, int]:
+    """Patches the comparison gives no reach although they may have one: `{patch: datasets}`.
 
-
-def hidden_behind(patches: list[dict], reach: dict[str, int], recorded: dict | None) -> dict:
-    """Patches the comparison gives no reach although they may have one: `{patch: the patches
-    recorded on a dataset it changed too}`.
-
-    The comparison attributes a changed row to the narrowest patch that fits it, by dataset.
-    Where two patches changed one dataset, the wider one can so be left without a row, and
-    without a reach, although it changed a field a score is computed from. Such a patch is
-    built alone as well: its effect is then measured and not declared empty."""
-    by_patch: dict[str, set[str]] = {}
-    for found in (recorded or {}).values():
-        here = [p["id"] for p in patches if p["id"] in found]
-        for patch in here:
-            by_patch.setdefault(patch, set()).update(other for other in here if other != patch)
+    The comparison names the narrowest patch that fits a changed row, by dataset. A wider
+    patch recorded on the same dataset could have made the change too; where the row is one
+    a score follows, the comparison says so (`scores.passed_over`). Such a patch is built
+    alone as well: its effect is then measured and not declared empty."""
     return {
-        p["id"]: sorted(by_patch[p["id"]])
-        for p in patches
-        if not reach.get(p["id"], 0) and by_patch.get(p["id"]) and changes_a_score_field(p)
+        step: int(n) for step, n in (comparison["scores"].get("passed_over") or {}).items() if n
     }
 
 
-def plan(summary: dict, comparison: dict, recorded: dict[str, list[str]] | None = None) -> dict:
+def plan(summary: dict, comparison: dict) -> dict:
     """What `fix-builds` builds: the import fixes alone, and each patch with a reach alone with
-    the import fixes; and the patches it leaves out, each with why. `recorded` are the steps
-    recorded on each dataset of the build with every fix (`compare.read_steps`): with it, a
-    patch that may be hidden behind another (`hidden_behind`) is built alone too."""
+    the import fixes, also a patch the comparison passed over for a row a score follows
+    (`passed_over`); and the patches it leaves out, each with why."""
     imports, patches = steps_of(summary)
     if not imports and not patches:
         raise FixesError("the run applied no import fix and no patch: there is nothing to measure")
     reach = reached(comparison)
     ids = [p["id"] for p in patches]
-    hidden = hidden_behind(patches, reach, recorded)
+    hidden = {p: n for p, n in passed_over(comparison).items() if p in ids and not reach.get(p, 0)}
     builds = [
         {
             "id": IMPORT_FIXES,
@@ -240,9 +224,10 @@ def pairs_of(built: list[str], reach: dict[str, set], changes: dict[str, dict]) 
 
 # A text of the format holds 600 characters at most.
 METHOD = (
-    "Each patch that changes a row a score is computed from, or that may be hidden behind "
-    "another patch on one dataset, was built alone with the import fixes and measured "
-    "against their build. The others are not built alone and have no effect. Two patches are "
+    "Each patch that changes a row a score is computed from, or that the comparison passed "
+    "over for such a row in favour of a narrower patch, was built alone with the import "
+    "fixes and measured against their build. The others are not built alone and have no "
+    "effect. Two patches are "
     "a pair where what they reach overlaps and their changes meet; no pair is built, so none "
     "is sized. The patched copy is held to the sum of the effects, value by value and "
     "without a floor, while no pair lies in it. A set that holds a pair is held to no sum, "

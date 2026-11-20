@@ -881,9 +881,7 @@ def fix_builds(args: argparse.Namespace) -> int:
     summary = json.loads(args.summary.read_text())
     comparison = json.loads(args.comparison.read_text())
     try:
-        # the steps recorded on each dataset, beside the run summary in the patched build
-        recorded = fixes_account.compare.read_steps(args.summary.resolve().parent)
-        planned = fixes_account.plan(summary, comparison, recorded)
+        planned = fixes_account.plan(summary, comparison)
     except fixes_account.FixesError as error:
         raise BuildError(str(error)) from None
     out = args.out.resolve()
@@ -913,10 +911,10 @@ def fix_builds(args: argparse.Namespace) -> int:
 
     for planned_build in planned["builds"]:
         print(f"  {planned_build['label']}", flush=True)
-    for patch, others in planned["built_although_no_reach"].items():
+    for patch, datasets in planned["built_although_no_reach"].items():
         print(
-            f"  built alone although the comparison gives it no reach: {patch}, which changed "
-            f"a dataset that {', '.join(others)} changed too",
+            f"  built alone although the comparison gives it no reach: {patch}, which could "
+            f"also explain a changed row a score follows, in {datasets} dataset(s)",
             flush=True,
         )
     for patch in planned["not_built"]:

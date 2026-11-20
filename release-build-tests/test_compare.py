@@ -929,39 +929,55 @@ class Tables(unittest.TestCase):
         meeting = {AMOUNT: {"farm", "mix"}, NAMES: {"gas", "mix"}}
         self.assertEqual(len(fixes_account.pairs_of([AMOUNT, NAMES], meeting, changes)), 1)
 
-    def test_a_patch_that_may_be_hidden_behind_another_is_built_alone(self):
+    def test_a_patch_that_was_passed_over_for_a_row_a_score_follows_is_built_alone(self):
         """The comparison names the narrowest patch that fits a changed row, by dataset. A
-        wider patch on the same dataset is then left without a reach although it changed a
-        field a score is computed from: it is built alone too, and its effect measured."""
+        wider patch on the same dataset could have made the change too. Where the row is one
+        a score follows, the comparison says that it passed the patch over, and the plan
+        builds it alone: its effect is measured and not declared empty."""
         from release_build import fixes_account
 
+        fields = compare.step_fields(None) | {
+            "0001-a": {"exchange": {"amount"}, "process": set()},
+            "0009-b": {"exchange": {"amount", "flow"}, "process": set()},
+        }
+        chosen = compare.explain({"amount"}, ["0001-a", "0009-b"], "exchange", fields)
+        self.assertEqual(chosen, ["0001-a"])
+        self.assertEqual(
+            compare.could_explain({"amount"}, ["0001-a", "0009-b"], "exchange", fields),
+            ["0001-a", "0009-b"],
+        )
+        # on the made-up tables no dataset has two patches that fit one row
+        rows = compare.compare_rows(self.base, self.cand, self.steps)
+        self.assertEqual(rows["passed_over"], [])
+        # with a wider patch recorded on every dataset the amount patch changed, the row of
+        # the amount is passed over for it, and it is a row scores follow
+        wider = {AMOUNT: fields[AMOUNT], "0009-wider": fields["0009-b"]} | fields
+        steps = {code: [*found, "0009-wider"] for code, found in self.steps.items()}
+        rows = compare.compare_rows(self.base, self.cand, steps, wider)
+        self.assertTrue(rows["passed_over"])
+        self.assertTrue(all(also == ["0009-wider"] for _, also in rows["passed_over"]))
+        seeds = compare.relevant_seeds(rows["passed_over"], self.effective, ["climate", "fossils"])
+        self.assertEqual(compare.passed_over_seeds(seeds), {"0009-wider": 1})
+        # the plan: the comparison's reach, and what it passed over
         comparison = self.chain_inputs()[0]
-        wider = {"flowData/exchange/@meanValue": 1, "flowData/exchange/@name": 1}
         summary = {
             "steps": [
                 {"id": "location-codes", "kind": "import fix"},
                 {"id": AMOUNT, "kind": "patch"},
-                {"id": "0009-wider", "kind": "patch", "fields": wider},
-                {"id": "0010-apart", "kind": "patch", "fields": wider},
-                {"id": LOCATION, "kind": "patch", "fields": {"flowData/exchange/@location": 1}},
+                {"id": "0009-wider", "kind": "patch"},
+                {"id": LOCATION, "kind": "patch"},
             ]
         }
-        recorded = {
-            "farm": ["location-codes", AMOUNT, "0009-wider", LOCATION],
-            "mix": ["0010-apart"],
-        }
-        self.assertEqual(fixes_account.reached(comparison).get("0009-wider", 0), 0)
-        planned = fixes_account.plan(summary, comparison, recorded)
-        self.assertEqual(
-            [b["id"] for b in planned["builds"]], ["import-fixes", AMOUNT, "0009-wider"]
-        )
-        self.assertEqual(planned["built_although_no_reach"], {"0009-wider": [AMOUNT, LOCATION]})
-        # alone on its datasets, the comparison's word stands; a location is no score field
-        self.assertEqual(planned["not_built"], ["0010-apart", LOCATION])
-        # without the record of who changed which dataset, the plan is the comparison's
         plain = fixes_account.plan(summary, comparison)
         self.assertEqual([b["id"] for b in plain["builds"]], ["import-fixes", AMOUNT])
         self.assertEqual(plain["built_although_no_reach"], {})
+        said = comparison | {"scores": comparison["scores"] | {"passed_over": {"0009-wider": 1}}}
+        planned = fixes_account.plan(summary, said)
+        self.assertEqual(
+            [b["id"] for b in planned["builds"]], ["import-fixes", AMOUNT, "0009-wider"]
+        )
+        self.assertEqual(planned["built_although_no_reach"], {"0009-wider": 1})
+        self.assertEqual(planned["not_built"], [LOCATION])
 
     def test_two_patches_are_a_pair_where_their_changes_meet(self):
         from release_build import fixes_account
