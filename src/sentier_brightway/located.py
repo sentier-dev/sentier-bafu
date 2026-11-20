@@ -56,7 +56,8 @@ def locate(bridge: Mapping[str, BridgeEntry], methods: tuple[MethodSpec, ...]) -
     """Give each linked flow that names a country the target and the factors of that country.
 
     A second pass changes nothing and reports the same: a link that already ends on the
-    target of a country is left as it is, and its target is among `nodes` again."""
+    target of a country is left as it is, its target is among `nodes` again, and
+    `per_method` counts it in the methods that have the country's factor."""
     named = {
         (entry.target_code, entry.target_location)
         for entry in bridge.values()
@@ -94,6 +95,9 @@ def locate(bridge: Mapping[str, BridgeEntry], methods: tuple[MethodSpec, ...]) -
         added, own = [], 0
         for key, (code, location) in nodes.items():
             if key in table:
+                # an earlier pass gave the target its factor: it is counted again, so that
+                # a second pass reports the same methods as the first
+                own += (code, location) in spec.located
                 continue
             if (code, location) in spec.located:
                 added.append((key, spec.located[(code, location)]))

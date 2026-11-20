@@ -75,6 +75,8 @@ def test_two_flows_of_one_country_share_one_target_and_a_second_pass_changes_not
     twice = locate(once.bridge, once.methods)
     assert twice.bridge == once.bridge
     assert (dict(twice.nodes), twice.flows, twice.flows_without) == (dict(once.nodes), 2, 0)
+    # the report publishes `per_method`: empty on a second pass would read "nothing moves"
+    assert dict(once.per_method) == {"water-use": 1} == dict(twice.per_method)
     assert [dict(m.cfs) for m in twice.methods] == [dict(m.cfs) for m in once.methods]
 
 
