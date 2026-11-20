@@ -558,7 +558,7 @@ class WholeManifest(Folder):
     def test_a_step_that_is_for_information_does_not_fail_the_run(self):
         """The comparison is the gate. The build with the world's factors adds a state to the
         chain beside it; when it fails, the run is judged without it."""
-        self.assertIn("world factors build", rm.FOR_INFORMATION)
+        self.assertEqual(rm.FOR_INFORMATION, {"world factors build", "fix builds", "fixes"})
         steps = write_run(self.out)
         aside = {"name": "world factors build", "status": "failed", "seconds": 3.0}
         steps.insert(1, aside | {"peak_memory_mb": 10.0, "reason": "no space left on device"})
@@ -567,6 +567,15 @@ class WholeManifest(Folder):
         self.assertEqual((data["status"], data["problems"]), ("completed", []))
         self.assertEqual(rm.release_errors(data), [])
         self.assertEqual(data["steps"][1]["status"], "failed")  # and it is still said
+        # the fixes one by one write a file that is never kept: when the builds fail, the
+        # step after them does not run, and neither fails the run
+        more = [
+            aside | {"name": "fix builds", "peak_memory_mb": 1.0, "reason": "a build stopped"},
+            {"name": "fixes", "status": "not run", "seconds": None, "peak_memory_mb": None}
+            | {"reason": "an earlier step did not get far enough"},
+        ]
+        data = rm.manifest(self.out, tag="patched-2026-v1.1", steps=[*steps, *more])
+        self.assertEqual((data["status"], data["problems"]), ("completed", []))
         # any other step that fails still fails the run
         steps[2] |= {"status": "failed", "reason": "audit failed"}
         self.assertEqual(rm.manifest(self.out, tag=None, steps=steps)["status"], "failed")

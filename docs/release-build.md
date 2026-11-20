@@ -27,8 +27,8 @@ folder, which holds BAFU's inventory and stays local.
 | written files | every written file against the EcoSpold 1 schema, and the file set against the run summary | a file is invalid, or the files are not the ones the summary describes |
 | patch run | the table of the patch run, and what each patch matched now and in the previous tagged build | the release is not a known one, a step stopped, or a patch changes nothing |
 | comparison | patched against provider: every changed row and every moved score attributed to a step | a changed row or a moved score has no explanation |
-| fix builds | the import fixes alone (`build --skip <every patch>`), and each patch whose changes reach a score alone with them (`build --only <patch>`), two at a time | a build stops, or the comparison did not run to the end |
-| fixes | each fix measured on its own, in `local/fixes.json` beside the run's local chain and its matrix | a fix that was built has no results, or the build with every fix does not agree with the fixes |
+| fix builds | the import fixes alone (`build --skip <every patch>`), and each patch whose changes reach a score alone with them (`build --only <patch>`), two at a time; also a patch that changed a field a score is computed from in a dataset another patch changed too. For information only, as the next step: a failure is said and does not fail the run | a build stops, or the comparison did not run to the end |
+| fixes | each fix measured on its own, in `local/fixes.json` beside the run's local chain and its matrix. For information only | a fix that was built has no results, or the build with every fix does not agree with the fixes |
 | exports | Brightway package, openLCA JSON-LD, ILCD and SimaPro CSV of the patched database, and the patched files again as ecoSpold v1 with the label, each read back | a format can't be written, or reads back differently. The other formats are still written and checked |
 | per contribution | build beside the patched copy, comparison with it, exports | as above, for the contribution's own database |
 | manifest | `manifest.json` from what the steps left behind | never; a failed step is recorded in it |
