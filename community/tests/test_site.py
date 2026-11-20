@@ -272,12 +272,13 @@ class TriageTests(unittest.TestCase):
         self.assertEqual(closed["unlisted"], [])
 
     def test_labels_follow_records_and_differences_are_a_list_for_maintainers(self):
-        finding, wanted = triage.FINDING_LABEL, triage.HELP_LABEL
+        finding = triage.FINDING_LABEL
         filed, answered, sent = (triage.expected_labels(key) for key in ("filed", "answered", "sent"))
-        self.assertTrue({finding, wanted} <= filed)
-        self.assertEqual(len(filed), 3)
+        # The finding label and one status label, and none of GitHub's own labels.
+        self.assertIn(finding, filed)
+        self.assertEqual(len(filed), 2)
+        self.assertNotIn("help wanted", filed)
         self.assertIn(finding, answered)
-        self.assertNotIn(wanted, answered)
         (is_answered,), (is_sent,) = answered - {finding}, sent - {finding}
         self.assertNotEqual(is_answered, is_sent)
         placed = {f["id"]: f for f in triage.assemble(self.findings, REPO, {})["findings"]}

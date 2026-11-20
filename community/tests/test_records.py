@@ -207,6 +207,51 @@ class ContributionTests(unittest.TestCase):
             self.assertIn("issue", record)
 
 
+class EndOfTextAndDateTests(unittest.TestCase):
+    """What a pattern lets through at the end of a text, and a date that has not come yet."""
+
+    SENT = {"batch": "2026-10", "date": "2026-11-25", "url": f"{REPO}/issues/48#issuecomment-5"}
+    REPEATED = {"by": "second-person", "date": "2026-11-21", "url": f"{REPO}/issues/48#issuecomment-4",
+                "result": "reproduced"}
+
+    def test_a_text_that_ends_in_a_line_break_does_not_pass_a_pattern(self):
+        """In Python, `$` is also the place before a final newline. A batch id that ended in
+        one passed the check and then stopped the build of the site, where it is a page name."""
+        self.assertEqual(errors(finding(sent=self.SENT)), [])
+        cases = {
+            "a batch id": finding(sent=dict(self.SENT, batch="2026-10\n")),
+            "a date": finding(sent=dict(self.SENT, date="2026-11-25\n")),
+            "an address": finding(sent=dict(self.SENT, url=self.SENT["url"] + "\n")),
+            "a finding id": finding(related=["F3\n"]),
+            "a release id": finding(releases=["2026-v1\n"]),
+            "a title": finding(title="Example dataset: the amount is a thousand times its siblings'\n"),
+        }
+        for name, record in cases.items():
+            self.assertTrue(errors(record), f"{name} that ends in a line break")
+        self.assertEqual(records.as_python("^F[1-9][0-9]*$"), "^F[1-9][0-9]*\\Z")
+        # A pattern without an end, and one that ends in a dollar sign as a character, stay.
+        self.assertEqual(records.as_python("\\S"), "\\S")
+        self.assertEqual(records.as_python("costs in \\$"), "costs in \\$")
+        # No pattern of the two schemas is read as Python would read it on its own.
+        for name in ("finding", "contribution"):
+            text = json.dumps(records.load_schema(name))
+            self.assertNotIn("\\\\Z", text, "the schema keeps the dialect of JSON Schema")
+
+    def test_evidence_dated_after_today_is_refused_where_a_day_is_named(self):
+        day = __import__("datetime").date(2026, 11, 20)
+
+        def on(record):
+            return records.validate_finding(record, None, RELEASES, today=day)
+
+        ahead = finding(repeated=dict(self.REPEATED, date="2099-01-01"))
+        self.assertEqual(errors(ahead), [], "without a day, a date is checked for its form only")
+        self.assertEqual(on(ahead), ["F48: repeated.date is after today (2099-01-01)"])
+        # A day of grace: GitHub dates a comment by UTC, which can be tomorrow here.
+        self.assertEqual(on(finding(repeated=self.REPEATED)), [])
+        self.assertEqual(len(on(finding(repeated=dict(self.REPEATED, date="2026-11-22")))), 1)
+        self.assertEqual(on(finding()), [])
+
+
 class SchemaTests(unittest.TestCase):
     """The published schema and the code agree, and the checker reads the schema itself."""
 
@@ -859,7 +904,8 @@ class CommandTests(WorkspaceCase):
         out = io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
             try:
-                code = records.main(["--root", str(self.root), *args])
+                # The dates of these tests lie far ahead; the commands refuse a date after "today".
+                code = records.main(["--root", str(self.root), "--today", "2099-12-31", *args])
             except SystemExit as stop:
                 code = stop.code if isinstance(stop.code, int) else 1
                 out.write(str(stop.code))
@@ -883,6 +929,16 @@ class CommandTests(WorkspaceCase):
         self.assertEqual(tuple(record), records.FINDING_FIELDS)
         self.assertIn("Needs a second measurement -> Repeated, not yet reported", text)
         self.assertEqual(self.result()[0], 0)
+
+    def test_a_command_refuses_a_date_that_has_not_come_yet(self):
+        before = tree(self.root)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out), self.assertRaises(SystemExit) as stop:
+            # Without the day the other tests name: the command checks against today.
+            records.main(["--root", str(self.root), "repeat", "F19", "--by", "second-person", "--date", "2099-01-01",
+                          "--url", f"{REPO}/issues/41#issuecomment-9", "--result", "reproduced"])
+        self.assertIn("repeated.date is after today (2099-01-01)", str(stop.exception.code))
+        self.assertEqual(self.changed(before), [])
 
     def test_repeat_refuses_the_reporter(self):
         before = tree(self.root)

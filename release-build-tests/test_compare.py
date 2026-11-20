@@ -4,6 +4,7 @@ Synthetic tables only. The tests that need pandas are skipped where it isn't ins
 """
 
 import importlib.util
+import json
 import sys
 import unittest
 from collections import namedtuple
@@ -258,6 +259,50 @@ class Tables(unittest.TestCase):
             summary["dataset_rows_changed_by_step"], {"location-codes": {"location": 1}}
         )
 
+    def test_a_step_explains_only_the_kind_of_exchange_it_changes(self):
+        """A patch of a flow's compartment explains an elementary exchange, not an input from
+        another dataset that was relinked in a dataset the patch also touched."""
+        processes, exchanges = self.inventory()
+        relinked = exchanges.copy()
+        mix_gas = (relinked.process_id == "mix") & (relinked.flow == "gas")
+        relinked.loc[mix_gas, "flow"] = "farm"  # the input now comes from another supplier
+        result = compare.compare_rows(
+            (processes, exchanges), (processes, relinked), {"mix": [COMPARTMENTS]}
+        )
+        self.assertEqual(result["summary"]["unexplained_count"], 1)
+        self.assertEqual(result["summary"]["unexplained"], [{"dataset": "mix", "fields": ["flow"]}])
+        # The same patch does explain a changed identity of an elementary exchange.
+        moved = exchanges.copy()
+        moved.loc[(moved.process_id == "gas") & (moved.flow == "gas-old"), "flow"] = "gas-other"
+        result = compare.compare_rows(
+            (processes, exchanges), (processes, moved), {"gas": [COMPARTMENTS]}
+        )
+        self.assertEqual(result["summary"]["unexplained_count"], 0)
+        self.assertEqual(result["summary"]["by_step"][COMPARTMENTS]["rows"], 1)
+        # And a patch of an input's amount does not explain a changed elementary amount.
+        emitted = exchanges.copy()
+        emitted.loc[(emitted.process_id == "farm") & (emitted.flow == "co2-old"), "amount"] = 2.0
+        result = compare.compare_rows(
+            (processes, exchanges), (processes, emitted), {"farm": [AMOUNT]}
+        )
+        self.assertEqual(result["summary"]["unexplained_count"], 1)
+        self.assertTrue(compare.may_change("location-codes", {"technosphere"}))
+        self.assertTrue(compare.may_change("a step the table does not know", {"biosphere"}))
+
+    def test_the_attribution_is_by_dataset_and_says_so(self):
+        """What stays open: two changed amounts in one dataset that patch 0001 touched are
+        both put down to it, also the one the patch did not make. The patch run records the
+        datasets a step changed, not the exchanges."""
+        processes, exchanges = self.inventory()
+        changed = exchanges.copy()
+        changed.loc[(changed.process_id == "farm") & (changed.flow == "waste"), "amount"] = 0.01
+        changed.loc[(changed.process_id == "mix") & (changed.flow == "gas"), "amount"] = 2000.0
+        result = compare.compare_rows(
+            (processes, exchanges), (processes, changed), {"farm": [AMOUNT], "mix": [AMOUNT]}
+        )
+        self.assertEqual(result["summary"]["by_step"][AMOUNT]["rows"], 2)
+        self.assertIn("by dataset, not by exchange", compare.ATTRIBUTION)
+
     def test_a_change_no_recorded_step_explains_is_reported(self):
         result = compare.compare_rows(self.base, self.cand, {"gas": [NAMES], "mix": [LOCATION]})
         summary = result["summary"]
@@ -379,6 +424,35 @@ class Tables(unittest.TestCase):
         result = compare.compare_scores(before, after, seeds, graph, names)
         self.assertEqual(result["unexplained_moves"], 1)
         self.assertEqual(result["methods"][0]["moved_by_step"], {AMOUNT: 1, "unexplained": 1})
+
+    def test_a_score_that_is_not_finite_has_moved_and_a_dataset_scored_once_stops_the_comparison(
+        self,
+    ):
+        import pandas as pd
+
+        index = pd.Index(["a", "b", "c", "d", "e"], name="code")
+        nan, inf = float("nan"), float("inf")
+        before = pd.DataFrame({"climate": [1.0, 1.0, 1.0, nan, inf]}, index=index)
+        after = pd.DataFrame({"climate": [nan, inf, -inf, nan, inf]}, index=index)
+        result = compare.compare_scores(before, after, {"climate": {}}, {}, {})
+        (climate,) = result["methods"]
+        # 1 to NaN, to +inf and to -inf have moved; NaN to NaN and inf to inf are the same.
+        self.assertEqual(climate["datasets_moved"], 3)
+        self.assertEqual(result["unexplained_moves"], 3)
+        self.assertEqual(sorted(row["code"] for row in climate["moved"]), ["a", "b", "c"])
+        self.assertEqual({row["after"] for row in climate["moved"]}, {"nan", "inf", "-inf"})
+        self.assertEqual({row["change_percent"] for row in climate["moved"]}, {None})
+        json.dumps(result, allow_nan=False)  # what is written is JSON
+        # A dataset that one build scored and the other did not is not left out in silence.
+        fewer = after.drop(index="e")
+        with self.assertRaisesRegex(
+            compare.CompareError, "1 only in the first, 0 only in the second"
+        ):
+            compare.compare_scores(before, fewer, {"climate": {}}, {}, {})
+        with self.assertRaisesRegex(
+            compare.CompareError, "0 only in the first, 1 only in the second"
+        ):
+            compare.compare_scores(fewer, before, {"climate": {}}, {}, {})
 
     def test_corrected_flows_are_listed_with_the_ef_flow_they_stay_on(self):
         receipt = {

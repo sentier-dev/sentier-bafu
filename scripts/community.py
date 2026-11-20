@@ -325,6 +325,18 @@ def json_equal(a, b):
     return a == b
 
 
+def as_python(pattern):
+    """A pattern of the schemas, as Python has to read it.
+
+    In the dialect of JSON Schema `$` is the end of the text. In Python it is also the
+    place before a final newline, so `"2026-10\n"` would pass a pattern that ends in `$`,
+    and a page name or an address would then hold a line break.
+    """
+    if pattern.endswith("$") and not pattern.endswith("\\$"):
+        return pattern[:-1] + "\\Z"
+    return pattern
+
+
 def schema_errors(value, schema, root=None, where=""):
     """Errors of `value` against the subset of JSON Schema that the record schemas use.
 
@@ -352,7 +364,7 @@ def schema_errors(value, schema, root=None, where=""):
             if not any(json_equal(value, option) for option in rule):
                 errors.append(f"{name} is {json.dumps(value)}; allowed: {', '.join(map(str, rule))}")
         elif keyword == "pattern":
-            if isinstance(value, str) and not re.search(rule, value):
+            if isinstance(value, str) and not re.search(as_python(rule), value):
                 errors.append(
                     f"{name} is empty" if rule == r"\S" else f"{name} does not have the required form ({rule})"
                 )
@@ -558,6 +570,14 @@ def strings(value, where=""):
                 yield from strings(item, f"{where}[{n}]")
 
 
+#: The day evidence is checked against when a command names one (`--today`); else today.
+TODAY = None
+
+
+def today():
+    return TODAY or datetime.date.today()
+
+
 def real_date(text):
     try:
         return datetime.date.fromisoformat(text).isoformat() == text
@@ -569,13 +589,15 @@ def same_person(a, b):
     return a.strip().lstrip("@").lower() == b.strip().lstrip("@").lower()
 
 
-def validate_finding(record, path=None, releases=None, older_until=None):
+def validate_finding(record, path=None, releases=None, older_until=None, today=None):
     """Errors of one finding record: the schema first, then the rules a schema cannot express.
 
     `path` is the file's path in the repository when the record was read from a file.
     `releases` is the set of known release ids; by default the list in site/config.json.
     `older_until` is the last number of the older numbering; by default `older_numbering_until`
-    in site/config.json.
+    in site/config.json. `today` is a date: with it, evidence dated later is refused (a day
+    of grace, since GitHub dates a comment by UTC). The check of the repository, the commands
+    for people and the intake pass it; without it dates are checked for their form only.
     """
     if not isinstance(record, dict):
         return [f"{path or '?'}: a finding record is a JSON object"]
@@ -620,6 +642,10 @@ def validate_finding(record, path=None, releases=None, older_until=None):
         block = record[name]
         if block and block.get("date") is not None and not real_date(block["date"]):
             errors.append(f"{rid}: {name}.date is not a calendar date")
+        elif block and block.get("date") is not None and today is not None:
+            # A date in the future would pin the finding at the top of the list and the feed.
+            if datetime.date.fromisoformat(block["date"]) > today + datetime.timedelta(days=1):
+                errors.append(f"{rid}: {name}.date is after today ({block['date']})")
     if not errors:
         for date, name, _ in evidence(record):
             if name != "reported" and reported["date"] and date < reported["date"]:
@@ -1169,7 +1195,7 @@ def layer_errors(root, contributions):
 # ------------------------------------------------------------------------------------ check
 
 
-def problems(root=ROOT):
+def problems(root=ROOT, today=None):
     """Everything wrong with the records under `root`: (errors, notes, what was validated).
 
     `check` prints this, and the site build refuses to write a page while there is an error:
@@ -1215,7 +1241,7 @@ def problems(root=ROOT):
         where = path.relative_to(root).as_posix()
         try:
             record = read(path)
-            found = validate_finding(record, where, releases, older_until)
+            found = validate_finding(record, where, releases, older_until, today)
         except Exception as error:  # name the file; never stop at the first broken record
             errors.append(f"{where}: unreadable record ({type(error).__name__}: {error})")
             continue
@@ -1248,8 +1274,8 @@ def problems(root=ROOT):
     return errors, notes, summary
 
 
-def check(root):
-    errors, notes, summary = problems(root)
+def check(root, today=None):
+    errors, notes, summary = problems(root, today)
     print("\n".join(errors) if errors else summary + "".join(f"\nNote: {note}" for note in notes))
     return int(bool(errors))
 
@@ -1298,7 +1324,9 @@ def with_evidence(root, rid, name, block, replace=False, clear_next=False, next_
         record["next"] = None
     config = load_config(root)
     releases = {r["id"] for r in config["releases"]}
-    problems = validate_finding(record, path.relative_to(root).as_posix(), releases, config["older_numbering_until"])
+    problems = validate_finding(
+        record, path.relative_to(root).as_posix(), releases, config["older_numbering_until"], today()
+    )
     if problems:
         raise SystemExit("Nothing written:\n" + "\n".join(problems))
     return path, record, before
@@ -1433,6 +1461,9 @@ def parser():
     top = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     # Tests and other tools point the commands at another checkout; people never need to.
     top.add_argument("--root", type=Path, default=ROOT, help=argparse.SUPPRESS)
+    # The day that evidence is checked against: a date after it is refused. Tests of the
+    # commands write dates far ahead and name a later day here.
+    top.add_argument("--today", type=datetime.date.fromisoformat, default=None, help=argparse.SUPPRESS)
     sub = top.add_subparsers(dest="command", required=True)
     sub.add_parser("check", help="validate every record and the references between them")
     command = sub.add_parser("index", help="write the one-line-per-finding table for the site")
@@ -1478,8 +1509,10 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     root = args.root.resolve()
+    global TODAY
+    TODAY = args.today
     if args.command == "check":
-        return check(root)
+        return check(root, today())
     if args.command == "index":
         # The table is a build output: two pull requests that each add a finding
         # would always conflict on a committed copy.

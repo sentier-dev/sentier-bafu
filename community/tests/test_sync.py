@@ -62,8 +62,8 @@ PATH = [{}, {"repeated": REPEATED}, {"repeated": REPEATED, "sent": SENT},
         {"repeated": REPEATED, "sent": SENT, "answer": ANSWER, "fixed_in": FIXED}]
 
 
-def issue(labels=("bafu-finding",), state="open"):
-    return {"state": state, "state_reason": None, "labels": sorted(labels)}
+def issue(labels=("bafu-finding",), state="open", reason=None):
+    return {"state": state, "state_reason": reason, "labels": sorted(labels)}
 
 
 class LabelTests(unittest.TestCase):
@@ -86,18 +86,21 @@ class LabelTests(unittest.TestCase):
             self.assertLessEqual(len(description), 100, name)
 
     def test_what_an_issue_carries(self):
-        self.assertEqual(sync.expected_labels("filed", "BAFU"), {"bafu-finding", FILED, "help wanted"})
+        self.assertEqual(sync.expected_labels("filed", "BAFU"), {"bafu-finding", FILED})
         self.assertEqual(sync.expected_labels("answered", "BAFU"), {"bafu-finding", "status: answered by BAFU"})
         self.assertEqual(sync.expected_labels(None, "BAFU"), {"bafu-finding", "needs-triage"})
         for key in community.STAGE_ORDER:
             labels = sync.expected_labels(key, "BAFU")
             self.assertEqual(sum(1 for label in labels if label.startswith("status: ")), 1, key)
-            self.assertEqual("help wanted" in labels, key == "filed", key)
+            self.assertNotIn("help wanted", labels, key)
 
     def test_the_job_owns_its_labels_and_no_others(self):
-        for label in (FILED, "status: anything in other words", "help wanted", "needs-triage",
+        for label in (FILED, "status: anything in other words", "needs-triage",
                       "upstream-reported", "upstream-fixed", "informational", "handled-in-layer", "withdrawn"):
             self.assertTrue(sync.owned(label), label)
+        # GitHub's own labels are a person's to set: the job neither adds nor removes them.
+        for label in ("help wanted", "question", "good first issue"):
+            self.assertFalse(sync.owned(label), label)
         for label in ("bafu-finding", "question", "discussion", "needs-info", "licence", "bug", "contribution"):
             self.assertFalse(sync.owned(label), label)
 
@@ -120,7 +123,7 @@ class PlanTests(unittest.TestCase):
 
     def test_a_new_record_gets_its_labels_and_one_comment(self):
         entry = self.one(finding(), ("bafu-finding", "needs-triage"))
-        self.assertEqual(entry["add"], ["help wanted", FILED])
+        self.assertEqual(entry["add"], [FILED])
         self.assertEqual(entry["remove"], ["needs-triage"])
         self.assertTrue(entry["announce"])
         self.assertEqual(entry["marker"], "sync: F48=filed")
@@ -167,6 +170,21 @@ class PlanTests(unittest.TestCase):
             self.assertIsNone(closed["close"], "an issue that is closed is not closed again")
         self.assertIn("> It did not hold when measured again.", self.one(cases[0][0])["comment"])
 
+    def test_an_issue_a_person_reopened_is_not_closed_again(self):
+        final = finding(**PATH[4])
+        labels = sync.expected_labels("fixed", "BAFU")
+        # Never closed: the job closes it. Reopened by a person: it stays open, night after night.
+        self.assertEqual(self.one(final, labels)["close"], "completed")
+        for _ in range(3):
+            (entry,) = self.plan([final], {48: issue(labels, reason="reopened")})
+            self.assertIsNone(entry["close"])
+            self.assertFalse(entry["announce"])
+            self.assertEqual((entry["add"], entry["remove"]), ([], []))
+            self.assertIn("#48 was reopened, and F48 has a final status (Resolved)", entry["person"][0])
+        # Reopened while the finding was on its way, and final only now: closed, with its comment.
+        earlier = self.plan([final], {48: issue(sync.expected_labels("answered", "BAFU"), reason="reopened")})[0]
+        self.assertEqual((earlier["close"], earlier["announce"], earlier["person"]), ("completed", True, []))
+
     def test_a_closed_issue_whose_finding_is_still_on_its_way_is_for_a_person(self):
         entry = self.one(finding(), sync.expected_labels("filed", "BAFU"), "closed")
         self.assertEqual((entry["add"], entry["remove"], entry["announce"], entry["close"]), ([], [], False, None))
@@ -175,7 +193,8 @@ class PlanTests(unittest.TestCase):
     def test_a_label_set_by_hand_is_put_right_without_a_comment_when_the_status_is_unchanged(self):
         right = sync.expected_labels("sent", "BAFU")
         entry = self.one(finding(**PATH[2]), right | {"help wanted", "upstream-fixed", "question"})
-        self.assertEqual((entry["add"], entry["remove"]), ([], ["help wanted", "upstream-fixed"]))
+        # `help wanted` and `question` were set by a person for a reason of their own: they stay.
+        self.assertEqual((entry["add"], entry["remove"]), ([], ["upstream-fixed"]))
         self.assertFalse(entry["announce"])
         # A second status label set by hand goes; the right one stays.
         entry = self.one(finding(**PATH[2]), right | {"status: resolved"})
@@ -194,11 +213,13 @@ class PlanTests(unittest.TestCase):
         self.assertIsNone(entry["comment"])
 
     def test_labels_are_told_apart_without_regard_to_case_as_github_does(self):
-        labels = {"bafu-finding", "Help Wanted", "Status: Needs a second measurement"}
-        self.assertEqual(self.plan([finding()], {48: issue(labels)}), [])
+        labels = {"bafu-finding", "Needs-Triage", "Status: Needs a second measurement"}
+        (entry,) = self.plan([finding()], {48: issue(labels)})
+        self.assertEqual((entry["add"], entry["remove"]), ([], ["Needs-Triage"]))
+        self.assertEqual(self.plan([finding()], {48: issue(labels - {"Needs-Triage"})}), [])
         entry = self.one(finding(**PATH[2]), {"bafu-finding", "Help Wanted", "STATUS: NEEDS A SECOND MEASUREMENT"})
         self.assertEqual(entry["add"], ["status: reported to BAFU"])
-        self.assertEqual(entry["remove"], ["Help Wanted", "STATUS: NEEDS A SECOND MEASUREMENT"])
+        self.assertEqual(entry["remove"], ["STATUS: NEEDS A SECOND MEASUREMENT"])
         self.assertTrue(entry["announce"])
         existing = {"Status: Withdrawn": {"name": "Status: Withdrawn", "description": "x"}}
         create, describe = sync.label_changes(existing, "BAFU")
@@ -213,7 +234,7 @@ class PlanTests(unittest.TestCase):
         first, second = finding(8, issue=3, **PATH[3]), finding(10, issue=3)
         (entry,) = self.plan([second, first], {3: issue()})
         self.assertEqual((entry["findings"], entry["stage"]), (["F8", "F10"], "filed"))
-        self.assertEqual(entry["add"], ["help wanted", FILED])
+        self.assertEqual(entry["add"], [FILED])
         self.assertEqual(entry["marker"], "sync: F8=answered F10=filed")
         self.assertIn("**[F8](", entry["comment"])
         self.assertIn("**[F10](", entry["comment"])
@@ -424,7 +445,7 @@ class ApplyTests(unittest.TestCase):
         self.assertIsNone(issues[72], "an issue that does not exist")
         planned = sync.plan(findings, issues, CONFIG)
         differences = {entry["issue"]: entry for entry in planned}
-        self.assertEqual(differences[70]["add"], ["bafu-finding", "help wanted", FILED])
+        self.assertEqual(differences[70]["add"], ["bafu-finding", FILED])
         self.assertTrue(differences[71]["person"] and differences[72]["person"])
         # What is left for a person is not counted as done, and nothing is written for it.
         self.assertEqual(sync.apply(planned, self.api, "BAFU", pause=self.pauses.append), (1, 0, None, []))

@@ -72,7 +72,7 @@ class FakeGitHub:
         pull = next(p for p in self.pulls if p["number"] == number)
         self.branches["main"].update(self.branches[pull["head"]])
         self.heads["main"] = hashlib.sha1(f"merge{number}".encode()).hexdigest()
-        pull.update(state="closed", merged=True)
+        pull.update(state="closed", merged=True, merged_at="2026-11-23T08:00:00Z")
 
     # ------------------------------------------------------------------------- the transport
 
@@ -167,7 +167,7 @@ class FakeGitHub:
             if any(p["head"] == payload["head"] and p["state"] == "open" for p in self.pulls):
                 return 422, {"message": "A pull request already exists"}
             self.next_id += 1
-            self.pulls.append(dict(payload, number=self.next_id, state="open", merged=False))
+            self.pulls.append(dict(payload, number=self.next_id, state="open", merged=False, merged_at=None))
             return 201, self.pulls[-1]
         match = re.fullmatch(r"/git/ref/heads/(.+)", path)
         if match and method == "GET":

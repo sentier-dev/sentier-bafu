@@ -35,7 +35,6 @@ import community
 import sync  # scripts/sync.py writes the labels; here they are only compared
 
 FINDING_LABEL = sync.FINDING_LABEL
-HELP_LABEL = sync.HELP_LABEL
 # Labels of the earlier model, and the form's `needs-triage`, which now means only
 # "an issue without a record": none of them belongs on an issue that has a record.
 RETIRED_LABELS = sync.RETIRED_LABELS | {sync.TRIAGE_LABEL}

@@ -405,11 +405,33 @@ class WholePath(unittest.TestCase):
             {kind: check["passed"] for kind, check in manifest["checks"].items()},
             {
                 "brightway": True,
-                "openlca": True,
+                # The JSON-LD writer marks emissions as inputs; the read-back says so.
+                "openlca": False,
                 "ilcd": True,
                 "simapro": True,
                 "ecospold1": True,
             },
+        )
+        # The two formats that are held back are set aside and are not among the files.
+        self.assertEqual(
+            {kind: entry["status"] for kind, entry in manifest["formats"].items()},
+            {
+                "brightway": "completed",
+                "openlca": "held back",
+                "ilcd": "held back",
+                "simapro": "completed",
+                "ecospold1": "completed",
+            },
+        )
+        self.assertEqual(sorted(manifest["held_back"]), ["ilcd", "openlca"])
+        self.assertTrue(
+            all("wrong direction" in line for line in manifest["checks"]["openlca"]["problems"])
+        )
+        self.assertFalse({"openlca", "ilcd"} & set(manifest["files"]))
+        held = self.out / "exports" / "patched" / "held-back"
+        self.assertEqual(
+            sorted(path.name for path in held.iterdir()),
+            sorted(entry["name"] for entry in manifest["held_back"].values()),
         )
         self.assertEqual(manifest["label"], "Modified Data")
         self.assertEqual(manifest["counts"]["activities"], 8)
@@ -424,8 +446,6 @@ class WholePath(unittest.TestCase):
             names,
             {
                 "bafu-2026-v1-patched.bw2package",
-                "bafu-2026-v1-patched-openlca.zip",
-                "bafu-2026-v1-patched-ilcd.zip",
                 "bafu-2026-v1-patched-simapro.csv",
                 "bafu-2026-v1-patched-ecospold1.zip",
                 "MODIFICATIONS.json",
@@ -565,7 +585,21 @@ class WholePath(unittest.TestCase):
         self.assertEqual(manifest["brightway"]["provider"]["database"], "bafu-2026")
         self.assertEqual(manifest["comparison"]["rows_no_step_explains"], 0)
         exports = manifest["exports"]["patched"]
-        self.assertEqual(set(exports["read_back_matches"].values()), {True})
+        self.assertEqual(
+            exports["read_back_matches"],
+            {
+                "brightway": True,
+                "openlca": False,
+                "ilcd": "counted",
+                "simapro": True,
+                "ecospold1": True,
+            },
+        )
+        self.assertEqual(sorted(exports["held_back"]), ["ilcd", "openlca"])
+        self.assertGreater(exports["held_back"]["openlca"]["differences"], 0)
+        self.assertEqual(exports["held_back"]["ilcd"]["differences"], 0)
+        self.assertFalse({"openlca", "ilcd"} & {entry["kind"] for entry in exports["files"]})
+        self.assertEqual(manifest["status"], "completed", "a held-back format fails no run")
         self.assertIs(exports["published"], False)
         listed = {entry["name"]: entry["sha256"] for entry in exports["files"]}
         sums = (self.out / "exports" / "patched" / "SHA256SUMS").read_text().splitlines()

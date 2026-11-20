@@ -916,7 +916,10 @@ def export_command(folder: Path, destination: Path) -> list[str] | None:
     export = record.get("export")
     if not export or not export.get("summary"):
         return None
-    command = ["uv", "run", "--python", "3.12", str(EXPORT)]
+    # `--locked`: the script's own requirements and everything they pull in are the versions
+    # of `export_release.py.lock`, on every run, a tagged one too. A lock that no longer fits
+    # the script's requirements stops the step.
+    command = ["uv", "run", "--locked", "--python", "3.12", str(EXPORT)]
     command += ["--brightway-dir", export["brightway_dir"], "--project", export["project"]]
     for database in export["databases"]:
         command += ["--database", database]

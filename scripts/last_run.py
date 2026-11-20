@@ -267,35 +267,55 @@ def one_run(github, run, artifact_name, fetch=fetch_address):
     }
 
 
-def last_for_tag(github, workflow, tags):
-    """GitHub's record of the last ended run of `workflow` that was made for a tag that
-    begins with `tags`, or None. GitHub names the tag where it names the branch of a run."""
+def runs_for_tags(github, workflow, tags):
+    """GitHub's records of the runs of `workflow` that were made for a tag that begins with
+    `tags`, newest first. GitHub names the tag where it names the branch of a run."""
     listing = github.get(f"/actions/workflows/{workflow}/runs?event=push&per_page=50") or {}
-    for run in listing.get("workflow_runs") or ():
-        if run.get("status") == "completed" and str(run.get("head_branch") or "").startswith(tags):
-            return run
-    return None
+    return [
+        run
+        for run in listing.get("workflow_runs") or ()
+        if str(run.get("head_branch") or "").startswith(tags)
+    ]
 
 
 def fetch(repository, run, token=None, transport=None, fetch=fetch_address):
-    """The record of the last ended run of the workflow `run` names, in `repository`."""
+    """The record of the last ended run of the workflow `run` names, in `repository`.
+
+    Of the default branch or made for a tag, and of nothing else. A run that someone started
+    on another branch (a trial of a change that is not merged) is not "the last build" of the
+    repository: the page would show what no reviewed revision produced.
+    """
     github = github_api.GitHub(repository, token, transport=transport)
     try:
-        listing = github.get(f"/actions/workflows/{run['workflow']}/runs?per_page=20") or {}
+        default = (github.get("") or {}).get("default_branch")
+        if not isinstance(default, str) or not default:
+            return empty("no run", repository, run, "the repository names no default branch", now())
+        listing = (
+            github.get(
+                f"/actions/workflows/{run['workflow']}/runs?branch={github_api.quoted(default)}&per_page=20"
+            )
+            or {}
+        )
     except github_api.NotFound:
         return empty("no run", repository, run, "the repository has no such workflow", now())
     runs = listing.get("workflow_runs") or []
+    tagged = run.get("tagged")
+    for_tags = runs_for_tags(github, run["workflow"], tagged["tags"]) if tagged else []
+    listed = {int(one["id"]) for one in runs}
+    runs = sorted(
+        [*runs, *(one for one in for_tags if int(one["id"]) not in listed)],
+        key=lambda one: int(one["id"]),
+        reverse=True,
+    )
     ended = [one for one in runs if one.get("status") == "completed"]
     if not ended:
         return empty("no run", repository, run, None, now())
     last = ended[0]
     newer = runs[0] if runs[0] is not last else None
-    tagged = run.get("tagged")
     of_tag = None
-    if tagged:
-        made = last_for_tag(github, run["workflow"], tagged["tags"])
-        if made is not None and int(made["id"]) != int(last["id"]):
-            of_tag = one_run(github, made, run["artifact"], fetch)
+    made = next((one for one in for_tags if one.get("status") == "completed"), None)
+    if made is not None and int(made["id"]) != int(last["id"]):
+        of_tag = one_run(github, made, run["artifact"], fetch)
     return (
         empty("read", repository, run, read=now())
         | one_run(github, last, run["artifact"], fetch)

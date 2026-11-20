@@ -109,7 +109,9 @@ def figures(name, manifest) -> list:
         if exports:
             back = exports["read_back_matches"]
             add(len(back), "file formats")
-            add(sum(1 for ok in back.values() if ok), "read back the same")
+            add(sum(1 for ok in back.values() if ok is True), "read back the same")
+            if exports.get("held_back"):
+                add(len(exports["held_back"]), "held back")
     return out
 
 
@@ -233,6 +235,17 @@ def from_manifest(manifest, names=None) -> dict:
         if exports.get("published") is False and exports.get("note")
         else []
     )
+    # A format that was written and read back and is held back is said, with its reason:
+    # its file is not among the files below.
+    held = (exports.get("patched") or {}).get("held_back") or {}
+    remarks += [
+        quoted(
+            f"The {EXPORT_NAMES.get(kind, kind)} export was written and read back, and is "
+            f"not among the files: {entry['reason']}",
+            summary.MAX_TEXT,
+        )
+        for kind, entry in sorted(held.items())
+    ]
     steps = [
         summary.step(
             step["name"],
