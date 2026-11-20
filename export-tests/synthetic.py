@@ -272,6 +272,15 @@ def with_letters_the_simapro_file_lacks(flows, inventory):
         inventory["heat"]["_exchanges"].append(("biosphere", code, 0.125 * (position + 1)))
 
 
+def with_a_spelled_out_name_that_is_taken(flows, inventory):
+    """Add two emissions into one compartment whose names are one name once the Greek letter
+    is spelled out."""
+    flows["hch-greek"] = _flow("α-hexachlorocyclohexane", ("air",), "kilogram")
+    flows["hch-latin"] = _flow("alpha-hexachlorocyclohexane", ("air",), "kilogram")
+    for position, code in enumerate(("hch-greek", "hch-latin")):
+        inventory["heat"]["_exchanges"].append(("biosphere", code, 0.125 * (position + 1)))
+
+
 def with_a_name_no_rule_writes(flows, inventory):
     """Add an emission whose name has a character that no rule says how to write."""
     flows["snow"] = _flow("Snow ☃, made up", ("air",), "kilogram")

@@ -991,6 +991,22 @@ def test_the_writer_alone_writes_a_question_mark_and_the_check_says_so(tmp_path)
     assert f"{(INVENTORY, 'heat')}: elementary flows differ from the database" in problems
 
 
+def test_a_spelled_out_name_that_another_flow_has_fails_simapro_and_leaves_the_others(tmp_path):
+    """`α-HCH` is written `alpha-HCH`. Beside a flow that is named `alpha-HCH` in the same
+    compartment the file could not be mapped back, so the SimaPro file is not written."""
+    manifest, out, _ = export(tmp_path, synthetic.with_a_spelled_out_name_that_is_taken)
+    assert manifest["status"] == "failed"
+    entry = manifest["formats"]["simapro"]
+    assert (entry["status"], entry["stage"]) == ("failed", "write")
+    assert "1 elementary flow(s) would be written under a name that another flow" in entry["error"]
+    assert "'α-hexachlorocyclohexane' as 'alpha-hexachlorocyclohexane'" in entry["error"]
+    assert not list(out.glob("*.csv"))
+    for kind in ("brightway", "openlca", "ilcd"):
+        assert fine(manifest, kind), kind
+    # two flows of one name that no rule rewrote still carry their code, and stay two
+    # (test_compartments_of_the_build_go_to_their_simapro_section)
+
+
 def test_a_name_that_no_rule_writes_fails_simapro_and_leaves_the_others(tmp_path):
     manifest, out, _ = export(tmp_path, synthetic.with_a_name_no_rule_writes)
     assert manifest["status"] == "failed"

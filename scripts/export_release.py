@@ -328,7 +328,7 @@ def simapro_flows(nodes, labels):
     the file's encoding can hold it (`simapro_text`); one that it can't hold stops the
     export, because the writer would put "?" in its place.
     """
-    rows, unknown, unwritable = {}, Counter(), {}
+    rows, unknown, unwritable, rewritten = {}, Counter(), {}, set()
     for key in used_flows(nodes):
         categories = tuple(str(c) for c in nodes[key].get("categories") or ())
         section, depth = simapro_section(categories, labels)
@@ -341,6 +341,8 @@ def simapro_flows(nodes, labels):
         )
         if lost or lost_sub:
             unwritable[_clean(nodes[key].get("name"))] = sorted(set(lost + lost_sub))
+        if name != _clean(nodes[key].get("name")):
+            rewritten.add(key)
         rows[key] = (section, name, sub)
     if unknown:
         listed = ", ".join(f"{name!r} ({count} flows)" for name, count in sorted(unknown.items()))
@@ -359,6 +361,19 @@ def simapro_flows(nodes, labels):
             f"write it: {listed}. Extend `simapro_text`."
         )
     shared = Counter(rows.values())
+    # A name that was spelled out and is then the name of another flow in the same
+    # compartment (`α-HCH` beside `alpha-HCH`): the list of spelled-out names would say
+    # `alpha-HCH` for both, and the file could not be mapped back to the database.
+    taken = sorted(
+        (_clean(nodes[key].get("name")), rows[key][1]) for key in rewritten if shared[rows[key]] > 1
+    )
+    if taken:
+        listed = ", ".join(f"{name!r} as {written!r}" for name, written in taken[:10])
+        raise ExportError(
+            f"{len(taken)} elementary flow(s) would be written under a name that another "
+            f"flow of the same compartment has, once their letters are spelled out for a "
+            f"SimaPro CSV file: {listed}. The file could not be mapped back to the database."
+        )
     return {
         key: row if shared[row] == 1 else (row[0], f"{row[1]} | {key[1]}", row[2])
         for key, row in rows.items()

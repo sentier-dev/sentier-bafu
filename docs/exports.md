@@ -173,7 +173,9 @@ is another form of one the encoding has is written as that one ("CO₂" is "CO2"
 manifest lists each flow written so (`simapro.flows_with_a_letter_spelled_out`). A character
 that no rule writes fails the SimaPro format with the flow's name. No flow of BAFU:2026 v1
 needs this under the build's own linking; under the second linking one does. The other
-formats hold every name as the database has it.
+formats hold every name as the database has it. A name that is spelled out
+and is then the name of another flow in the same compartment (`α-HCH` beside `alpha-HCH`)
+stops the SimaPro export: the file could not be mapped back to the database.
 
 **Flows in use.** The build's flow databases hold 93,154 elementary flows; the inventory
 uses 1,927. The openLCA, ILCD and SimaPro files hold the flows in use. The Brightway
