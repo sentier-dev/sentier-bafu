@@ -53,7 +53,7 @@ It builds a Brightway database of BAFU's release and one of the patched copy, bo
 Its state:
 
 - [`community/patches.json`](community/patches.json) lists the community patches with the findings they answer. A script writes it from the patches in `src/bafu_community_fixes/patches/`.
-- The files for Brightway, openLCA, ILCD and SimaPro, and the ecoSpold v1 files, are written and read back on your own machine and in the checks of this repository. A build with a tag keeps them under its tag on GitHub; the site offers each after asking the reader to accept BAFU's Terms of Use, and the notes of the tag begin with those terms. This repository and the site hold no inventory files.
+- The files for Brightway, openLCA, ILCD and SimaPro, and the ecoSpold v1 files, are written and read back on your own machine and in the checks of this repository. A build with a tag keeps them under its tag on GitHub; the site asks the reader to accept BAFU's Terms of Use before it links one (a notice, not a gate: under the tag each downloads without a question), and the notes of the tag begin with those terms. This repository and the site hold no inventory files.
 - No file has been opened in openLCA or in SimaPro yet. The checks read the files with separate programs.
 - Of the build that a maintainer gave a tag, the files above are kept with a manifest of checksums and counts. A local build can be compared with it.
 
@@ -87,7 +87,7 @@ The code and the documentation in this repository are under the MIT licence ([LI
 Some files that come with the code keep their own terms:
 
 - The EcoSpold 1 schema files in `src/bafu_community_fixes/schemas/ecospold1/` are under the EcoSpold Public License 1.0 (see [their README](src/bafu_community_fixes/schemas/ecospold1/README.md)).
-- The Brightway Flows data in `src/bafu_community_fixes/data/` is under the Open Database License 1.0 (see [its README](src/bafu_community_fixes/data/README.md)). So is `scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`, which is derived from Brightway Flows 1.1.0 for the build's second way of linking flows. The permission recorded for the first two files has not been asked for this one.
+- The Brightway Flows data in `src/bafu_community_fixes/data/` is under the Open Database License 1.0 (see [its README](src/bafu_community_fixes/data/README.md)). So is `scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`, which is derived from Brightway Flows 1.1.0 for the build's second way of linking flows. Its notice is beside it (`….csv.NOTICE.md`) and goes with every copy the build and the installer make. The permission recorded for the first two files has not been asked for this one.
 - The Brightway installer in `src/sentier_brightway/` is the code of sentier-brightway, moved here with its history. It is under the MIT licence too, © 2026 Départ de Sentier ([its LICENSE](src/sentier_brightway/LICENSE)).
 - The Rubik font in the patch tool's reports ([Rubik-OFL.txt](src/bafu_community_fixes/report_assets/Rubik-OFL.txt)) and the site's Nunito font ([OFL.txt](site/assets/OFL.txt)) are under the SIL Open Font License 1.1.
 - The Départ de Sentier logo (`site/assets/dds-logo.svg`) is by Sylvain Prevost, under CC BY 4.0 (see [site/README.md](site/README.md)).

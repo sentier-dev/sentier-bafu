@@ -37,6 +37,7 @@ on:
       - "scripts/check_patched_release.py"
       - "scripts/build_release.py"
       - "scripts/export_release.py"
+      - "scripts/export_release.py.lock"
       - "scripts/release_build/**"
       - "scripts/runrecord/**"
       - "src/sentier_brightway/**"
@@ -160,7 +161,9 @@ jobs:
           retention-days: 90
       - name: Hand the export files to the job that keeps them
         # For a tag only: the files the manifest lists, without the exports' own manifest and
-        # checksum list. Kept one day at most; the job that keeps them deletes this copy.
+        # checksum list, and without the formats that are held back (the export step sets
+        # their files aside in `held-back/`, see HELD_BACK in scripts/export_release.py).
+        # Kept one day at most; the job that keeps them deletes this copy.
         id: files
         if: ${{ github.ref_type == 'tag' && steps.public.outcome == 'success' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -170,6 +173,7 @@ jobs:
             ${{ runner.temp }}/release-run/exports/patched/
             !${{ runner.temp }}/release-run/exports/patched/manifest.json
             !${{ runner.temp }}/release-run/exports/patched/SHA256SUMS
+            !${{ runner.temp }}/release-run/exports/patched/held-back/**
           if-no-files-found: error
           retention-days: 1
 

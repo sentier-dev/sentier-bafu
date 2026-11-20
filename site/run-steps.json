@@ -29,7 +29,7 @@
     "comparison": {
       "short": "Compared",
       "title": "The two databases, compared",
-      "text": "Every exchange of BAFU's release is compared with the patched one, and every score under each impact method. Each difference must be explained by an import fix or a patch. A difference that nothing explains stops the run."
+      "text": "Every exchange of BAFU's release is compared with the patched one, and every score under each impact method. Each difference must be explained by an import fix or a patch that the run recorded on that dataset. A difference that nothing explains stops the run."
     },
     "exports": {
       "short": "Files for LCA tools",

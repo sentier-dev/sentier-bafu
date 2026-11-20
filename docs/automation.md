@@ -34,17 +34,17 @@ record changed.
 | 2 | `intake.yml` reads the form and opens a pull request `intake/F<issue>` that adds one file, `community/findings/<n // 1000>/F<n>.json`. It comments on the issue: "This report is finding F48 … proposed in #…". If the form is incomplete it says what is missing and sets `needs-info`; an edit of the issue runs the intake again. | workflow | a branch, a pull request, one comment |
 | 3 | The checks run on the proposed commit, and their result is reported on it. | workflow | commit statuses |
 | 4 | **A maintainer reads the record and merges it.** Is it a finding? No text pasted from BAFU's reports? Are the dataset numbers right? | **maintainer** | the record on `main` |
-| 5 | `sync.yml` sees the record: it sets `status: needs a second measurement` and `help wanted`, takes `needs-triage` off, and comments once with how to repeat the measurement. `pages.yml` rebuilds the site. | workflow | labels, one comment; the site |
+| 5 | `sync.yml` sees the record: it sets `status: needs a second measurement`, takes `needs-triage` off, and comments once with how to repeat the measurement. `pages.yml` rebuilds the site. | workflow | labels, one comment; the site |
 | 6 | **A second person repeats the measurement** on BAFU's release files and comments, beginning with `/repeated reproduced` or `/repeated not-reproduced`. | **second person** | a comment |
 | 7 | `intake.yml` opens a pull request `repeat/F<n>` that sets `repeated` in the record: who, when, the comment's address, the result. The reporter's own login is refused with a polite comment. | workflow | a branch, a pull request, one comment |
 | 8 | **A maintainer reads the comment and merges.** | **maintainer** | the record |
-| 9 | `sync.yml`: `status: repeated not yet reported`, `help wanted` off, one comment. | workflow | labels, one comment |
+| 9 | `sync.yml`: `status: repeated not yet reported`, one comment. | workflow | labels, one comment |
 | 10 | **Someone writes a community patch** if the finding needs one now. The patch names its finding; a second person authorises it in review. `full-release.yml` runs it on BAFU's full release and says what it changes there. The site shows the patch beside the finding. | **author, authoriser** | the patch, its test, and `community/patches.json`, which a script writes from the patches |
 | 11 | **Someone reports the findings to BAFU**, then records it for all of them with one command and one pull request. | **maintainer** | `sent` in each record |
 | 12 | `sync.yml`: `status: reported to BAFU`, one comment. | workflow | labels, one comment |
 | 13 | **Someone records BAFU's answer** in our own words. | **maintainer** | `answer` in the record |
 | 14 | `sync.yml`: `status: answered by BAFU`, one comment that quotes the summary. | workflow | labels, one comment |
-| 15 | **A maintainer pushes a tag** `patched-…`. `release-build.yml` builds the patched copy from BAFU's full release, with its Brightway database, its checks and its exports, and keeps `manifest.json` under the tag and nothing else. | **maintainer** | one file under the tag (what GitHub calls a Release) |
+| 15 | **A maintainer pushes a tag** `patched-…`. `release-build.yml` builds the patched copy from BAFU's full release, with its Brightway database, its checks and its exports, and keeps `manifest.json` and the export files the manifest lists under the tag, with BAFU's terms at the top of the tag's notes. A format that is held back is not among them. | **maintainer** | one file under the tag (what GitHub calls a Release) |
 | 16 | BAFU publishes a release. **A maintainer registers it** (section 6). The run on the new release says per patch whether it is still needed. | **maintainer** | one entry in `site/config.json` |
 | 17 | **A maintainer confirms the correction** with `community.py fixed`. | **maintainer** | `fixed_in` in the record |
 | 18 | `sync.yml`: `status: resolved`, one comment, and the issue is closed. | workflow | labels, one comment, the issue's state |
@@ -189,22 +189,27 @@ with the form as it was until November 2026 are still read (#47 and #35 are test
 ### sync.yml
 
 `python3 scripts/sync.py` prints the differences between records and issues; `--apply` writes
-them. A push and the nightly run apply; a run on request applies only when "apply" is ticked.
+them. A run on request applies only when "apply" is ticked. A push and the nightly run apply
+only when the repository variable `SYNC_APPLY` is `true`; without it they list the differences
+and write nothing. The variable is set by a person after the first run by hand (section 8), so
+the merge that brings this workflow in cannot write to the issues by itself.
 
 | The record says | The issue gets |
 |---|---|
 | a finding with this issue | `bafu-finding` and exactly one of `status: needs a second measurement`, `status: repeated not yet reported`, `status: reported to BAFU`, `status: answered by BAFU`, `status: resolved`, `status: for information`, `status: withdrawn` |
-| … that needs a second measurement | also `help wanted` |
 | … whose status changed | one comment, generated from the record. It carries a hidden marker and is never posted twice |
-| … whose status is final (corrected, for information, withdrawn) | closed: "completed" when corrected, "not planned" otherwise |
+| … whose status becomes final (corrected, for information, withdrawn) | closed: "completed" when corrected, "not planned" otherwise |
+| … that a person reopened after it was closed at a final status | left open, and listed "for a person to decide" at every run, without a comment |
 | no record for an open issue that carries `bafu-finding` | `needs-triage`, and no `status:` label |
 | two findings in one issue | the earlier status of the two; closed when both are final |
 
 The labels say the status in the words the site shows (`community.status_label`), so a label
 never says more than the site does. The job owns every label that begins with `status: `, plus
-`help wanted` and `needs-triage` on finding issues, and the labels of the earlier model
+`needs-triage` on finding issues, and the labels of the earlier model
 (`upstream-reported`, `upstream-fixed`, `informational`, `handled-in-layer`, `withdrawn`), which
-it takes off. Any other label on an issue is left alone. A label set by hand is put right at the
+it takes off. Any other label on an issue is left alone, GitHub's own `help wanted` and
+`question` among them: a person sets those for reasons of their own. "Needs a second
+measurement" has its own status label. A label of the job set by hand is put right at the
 next run. It creates the labels it defines when they are missing: the seven status labels,
 `needs-triage` and `contribution`.
 
@@ -253,7 +258,9 @@ keeps the manifest and those files under the tag (as what GitHub calls a Release
 with BAFU's terms at the top of its notes. Then it deletes the handed-over copy.
 
 Otherwise no inventory leaves the runner: the export files leave it only for a tag. The site
-offers them after asking the reader to accept BAFU's terms.
+asks the reader to accept BAFU's terms before it links one. That is a notice, not a gate:
+under the tag on GitHub each file downloads without a question, which is why the notes of the
+tag begin with the terms.
 
 The manifest (`scripts/release_build/release_manifest.py`, format
 `sentier-bafu/patched-release/2`). The first ten fields are the contract with the site and the
@@ -330,7 +337,7 @@ the text of a comment, and a login. All of it is untrusted.
 | A stranger suppresses a comment of the workflow by posting its hidden marker | Possible, and harmless: the comments are information; labels, records and pull requests do not depend on them. |
 | A collaborator prepares a branch `intake/F48` with other changes | A branch without an open pull request is set back to `main` before the record is written. On a branch with an open pull request, a change by a person stops the workflow from writing. The maintainer sees the whole difference in the pull request. |
 | A changed tag builds a release from unreviewed code | The build refuses a tag that is not on the default branch (`main`). Protect tags `patched-*` in the repository settings. |
-| A release asset that holds inventory | The publish job receives one file, checks that it has exactly the shape of a manifest, and uploads that file and nothing else (tested). |
+| A file under a tag that the build did not check | The publish job receives the manifest and the export files. It checks that the manifest has exactly its shape, that the run may be kept, and that the files are exactly the ones the manifest lists, byte for byte (`--verify … --release --files …`); then it uploads the manifest and those files, and nothing else. The formats that are held back, the exports' own manifest and their checksum list are not handed over (tested in `community/tests/test_workflows.py`). |
 | The token leaks to another address | `github_api.py` sends it only to an https address or to this machine. |
 
 What the workflows can write at most: with `contents: write`, the intake job could write any
@@ -342,7 +349,7 @@ branch. It writes `intake/F<n>` and `repeat/F<n>` only, and `main` should be pro
 | Case | Outcome |
 |---|---|
 | Two people file at the same moment | Two issues, two numbers, two branches, two files. No generated list is committed, so the two pull requests cannot conflict (tested). |
-| Two events for one issue at once | The intake runs one issue at a time, in order (`concurrency: intake-<number>`). |
+| Two events for one issue at once | Edits of one issue's form are taken one after the other by the job that writes the record (`concurrency: intake-<number>-form`, on that job, not on the workflow); of two that wait, GitHub runs only the newer, which holds the form as it is now. A comment never waits and never pushes a waiting edit out: each has a group of its own. Two commands on one finding at the same moment meet at the branch: the second is answered ("pending") or its job fails where a maintainer sees it. Not tried on GitHub yet. |
 | A form field is empty | Named in one comment; the record is proposed as soon as an edit fills it. |
 | A `/repeated` comment is edited later | Nothing runs: commands are read when a comment is created. **Limit:** the record keeps the address of the comment; GitHub shows that it was edited and keeps its history for maintainers. |
 | A `/repeated` comment is deleted after the merge | **Limit:** the record's link then leads to the issue without the comment. Nothing detects this. A maintainer can replace the evidence with `community.py repeat --replace`. |
@@ -422,6 +429,20 @@ BAFU's full release. Not checked, because it needs GitHub:
 
 ## 8. First run
 
+On 20 November 2026 none of the settings 1 to 4 below was in place on
+`sentier-dev/sentier-bafu`. They can be read without changing anything:
+
+```sh
+gh api repos/sentier-dev/sentier-bafu/actions/permissions/workflow   # 1: can_approve_pull_request_reviews
+gh api repos/sentier-dev/sentier-bafu/branches/main/protection       # 2: 404 means not protected
+gh api repos/sentier-dev/sentier-bafu/rulesets                       # 2 and 3: [] means no rule
+gh api repos/sentier-dev/sentier-bafu --jq .delete_branch_on_merge   # 4
+```
+
+Until setting 1 is ticked, the intake pushes its branch and is refused when it opens the pull
+request. It then says so once on the issue, names the branch, and the job fails; a maintainer
+opens the pull request from that branch by hand, or ticks the setting and comments `/record`.
+
 Before merging:
 
 1. **Settings → Actions → General → Workflow permissions:** tick "Allow GitHub Actions to create
@@ -435,8 +456,8 @@ Before merging:
 3. **Tags:** a rule that only maintainers create tags `patched-*`.
 4. **Settings → General → Pull Requests:** "Automatically delete head branches", so that merged
    `intake/…` branches go away. The intake copes with a branch that stays.
-5. **Labels:** none to create by hand. `bafu-finding`, `needs-triage`, `needs-info` and
-   `help wanted` exist; the first sync that applies creates the seven `status: …` labels and
+5. **Labels:** none to create by hand. `bafu-finding`, `needs-triage` and `needs-info`
+   exist; the first sync that applies creates the seven `status: …` labels and
    `contribution` (a form applies a label only if the label exists, so file no contribution
    before that run). The labels of the earlier model can be deleted after the first sync:
    `upstream-reported`, `upstream-fixed`, `informational`, `handled-in-layer`, `withdrawn`.
@@ -450,6 +471,10 @@ The first sync:
    9 of them, how to repeat the measurement). To post none, run with "apply" ticked and
    "comments" unticked; later changes of status are announced as usual.
 3. Run with "apply" ticked. Then run it once more: it must report 0 differences.
+4. Only then set the repository variable `SYNC_APPLY` to `true` (Settings → Secrets and
+   variables → Actions → Variables). From then on the runs after a push and at night write.
+   Until it is set they only list the differences, also the run that the merge of this
+   workflow starts.
 
 The first intake:
 

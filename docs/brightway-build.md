@@ -469,8 +469,11 @@ countries and scores all 11,947 datasets. The record is
 | of which have the country's factor in land use | 2 |
 
 - **Water use moves for 5,197 of the 11,947 datasets** by more than 1 %, for 854 of them by
-  more than 10 %. 5,146 go down: a country's factor is mostly lower than the factor without
-  a location.
+  more than 10 %. 5,118 go down and 58 go up: a country's factor is mostly lower than the
+  factor without a location. For 21 the score is zero to the precision of the solve on both
+  sides (1e-17 beside a median of 0.05), and no direction is given: its sign is not the same
+  on two machines. The directions were counted again on 20 November 2026, by the value of
+  the score and above a stated floor; the record says how.
 - **Land use moves for 5 datasets**, all upwards and by more than 10 %: two flows of rail
   land in Switzerland.
 - **No other category moves.**
@@ -488,8 +491,11 @@ a second reading of what such a flow means:
 Water use comes much closer. Land use moves away for the five datasets: for the two flows
 of rail land, BAFU's results follow the factor without a location.
 
-`sentier-brightway db --skip-located` builds as before. The build has no such option: a
-build records under `install` that its flows took the factors of countries.
+`sentier-brightway db --skip-located` builds as before, and so do `build_release.py build
+--skip-located` and `build_release.py release --skip-located`, which hand the switch to the
+installer for both builds. A build records under `install.located` whether its flows took
+the factors of countries, and its label says "the world's factors" when they did not.
+Without the switch the countries' factors are on, for water use and for land use alike.
 
 ## The second linking: through Brightway Flows
 
@@ -510,7 +516,26 @@ No factor is read from Brightway Flows. What the installer needs beside the cros
 `scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`, written by
 `scripts/build_brightway_flows_targets.py` from two files of Brightway Flows 1.1.0 on Zenodo,
 checked by their MD5. The file is derived from Brightway Flows and is under the Open Database
-License 1.0, like the crosswalk.
+License 1.0, like the crosswalk. The notice that says so is beside it
+(`brightway-flows-targets-bafu-2026-v1.csv.NOTICE.md`). A build of the second linking keeps
+the file as `flow-links.csv` with the notice beside it, and the installer copies both into
+`mappings/brightway-flows/` of a files export.
+
+A flow that BAFU keeps in the compartment `economic issues` is an entry of account and no
+exchange with the environment, and is not linked: `Water, embodied in product, CH` and the
+same for ES, KE, MX and PE (13 exchanges). The crosswalk ends them on the water flow, where
+they would take a water use factor. Measured on 20 November 2026 on the twelve datasets that
+these five flows move and that BAFU published a result for: without a factor, all twelve are
+closest to BAFU's published water use (eight within 0.1 %, the largest difference 1.25 %);
+with the factor without a location the largest difference is 173 %, with the country's own
+factor 5.6 %. The mapping of sentier-mappings does not link them either. The numbers of
+15 November below were measured before this: with it, 2,672 flows and 293,623 exchanges are
+linked, and three flows gain a factor, not eight.
+
+A linked flow that the mapping does not hold, on a flow that has factors of single
+countries, may name a country that nobody states. No country is read from a flow's name;
+the install report names such flows. BAFU:2026 v1 has none once the five above are left
+unlinked.
 
 A flow of EF 3.1 that the pinned flow terms and methods do not hold (38 of BAFU's flows end
 on one) gets a node with the name the link gives it. A node of a flow that is reached from

@@ -2,8 +2,10 @@
    provider's terms; this script shows them in a dialog instead, and the file is fetched only
    when the reader accepts. Nothing about the click is recorded or remembered: the question is
    asked each time. Without this script, or in a browser without <dialog>, the link leads to
-   the terms and hands out nothing. Shared by every Sentier dataset site; the words are the
-   site's own (site/config.json "download", written into the page by the build). */
+   the terms and hands out nothing. This is a notice, not a gate: the address of the file is
+   in the page (data-download), and whoever has it reaches the file without the question.
+   Shared by every Sentier dataset site; the words are the site's own (site/config.json
+   "download", written into the page by the build). */
 (function () {
   "use strict";
   var dialog = document.getElementById("download-terms");

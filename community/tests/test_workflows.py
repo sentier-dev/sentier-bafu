@@ -142,6 +142,14 @@ class WorkflowTests(unittest.TestCase):
             self.assertRegex(text, r"timeout-minutes: \d+", name)
         for name in ("intake.yml", "sync.yml", "pages.yml", "release-build.yml"):
             self.assertIn("cancel-in-progress: false", FILES[name], f"{name}: a run that writes is never cut off")
+        # The intake queues the job that writes, per issue for the form and per comment for a
+        # command: on the whole workflow, an ordinary comment would take the one waiting place
+        # of an edit, and the edit would be lost.
+        intake_text = FILES["intake.yml"]
+        self.assertNotIn("\nconcurrency:", intake_text, "no group on the workflow")
+        record = jobs(intake_text)["record"]
+        self.assertIn("group: intake-${{ github.event.issue.number }}-${{ github.event.comment.id || 'form' }}", record)
+        self.assertEqual(intake_text.count("concurrency:"), 1)
 
     def test_the_intake_reports_the_checks_under_the_names_of_the_checks(self):
         names = re.findall(r"(?m)^    name: (.+)$", FILES["checks.yml"])
@@ -163,6 +171,11 @@ class WorkflowTests(unittest.TestCase):
         sync = triggers("sync.yml")
         for wanted in ('"community/findings/**"', "schedule:", "workflow_dispatch:", "branches: [main]"):
             self.assertIn(wanted, sync)
+        # A push or the nightly run writes only once a person has set a repository variable:
+        # the merge that brings the workflow in is itself a push, and must not write.
+        self.assertIn("SYNC_APPLY: ${{ (github.event_name != 'workflow_dispatch' && vars.SYNC_APPLY == 'true') "
+                      "|| inputs.apply }}", FILES["sync.yml"])
+        self.assertNotIn("SYNC_APPLY: ${{ github.event_name != 'workflow_dispatch' ||", FILES["sync.yml"])
         # A tag `patched-…` starts one workflow, which builds and publishes the release.
         self.assertEqual([name for name, text in FILES.items() if "patched-" in text.split("\njobs:\n")[0]],
                          ["release-build.yml"])
@@ -224,6 +237,24 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("python3 -I scripts/release_build/release_manifest.py", verify)
         self.assertIn("--release", verify)
         self.assertLess(publish.index("--verify"), publish.index("gh release create"))
+        # What a tag keeps: the manifest and the export files, and those only after the gate
+        # found them to be exactly the files the manifest lists.
+        self.assertIn('--files "$RUNNER_TEMP/files"', verify)
+        create = next(block for block in run_blocks(publish) if "gh release create" in block)
+        uploaded = re.sub(r"\s+", " ", create.replace("\\\n", " "))
+        self.assertRegex(uploaded, r'gh release create "\$GITHUB_REF_NAME" "\$RUNNER_TEMP/release/manifest\.json" '
+                                   r'"\$RUNNER_TEMP"/files/\* --repo ')
+        self.assertEqual(uploaded.count("$RUNNER_TEMP"), 3, "the manifest, the files, the notes: nothing else")
+        # What the first job hands over for that: the export folder without the exports' own
+        # manifest, their checksum list and the formats that are held back.
+        handed = build.split("name: patched-copy-files", 1)[1].split("if-no-files-found", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^\s+(!?\$\{\{ runner\.temp \}\}/\S+)$", handed),
+            ["${{ runner.temp }}/release-run/exports/patched/",
+             "!${{ runner.temp }}/release-run/exports/patched/manifest.json",
+             "!${{ runner.temp }}/release-run/exports/patched/SHA256SUMS",
+             "!${{ runner.temp }}/release-run/exports/patched/held-back/**"],
+        )
         self.assertTrue((ROOT / "scripts/release_build/release_manifest.py").is_file())
         self.assertFalse((ROOT / "scripts/release_manifest.py").exists(), "a manifest is written in one place")
 

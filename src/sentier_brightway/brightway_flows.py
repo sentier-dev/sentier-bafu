@@ -41,6 +41,14 @@ from .units import normalize_unit
 #: ``flow_list`` of a target that EF 3.1 holds; every other target is outside EF 3.1.
 EF_LIST = "EF 3.1"
 LINKING = "brightway-flows"
+#: Compartments of a source whose flows are entries of account and no exchange with the
+#: environment. BAFU keeps ``Water, embodied in product, CH`` there: water that leaves in the
+#: product. Such a flow is not linked, so it takes no factor. Linked, it ends on the water
+#: flow and takes a water use factor; BAFU's published results count none for it (measured
+#: on the twelve datasets its five flows move: without a factor all twelve are closest to
+#: the published water use, the largest difference 1.25 %; with the factor without a
+#: location it is 173 %, with the country's factor 5.6 %).
+ACCOUNTING = frozenset({"economic issues"})
 
 KEY = ("name", "category", "subCategory", "unit")
 COLUMNS = frozenset(
@@ -77,6 +85,11 @@ class LinkReport:
     in_ef_without_term: int = 0
     # left unlinked on request, because their flow has no factor in any method
     left_out_without_factor: int = 0
+    # flow names: entries of account in the source (``ACCOUNTING``), not linked
+    accounting: tuple[str, ...] = ()
+    # flow names: linked to a flow that has factors of single countries, and not in the
+    # mapping, the one place that states which country a flow names
+    country_not_stated: tuple[str, ...] = ()
 
     def lines(self) -> tuple[str, ...]:
         """The report, as the lines printed after an install."""
@@ -99,6 +112,18 @@ class LinkReport:
             lines.append(
                 f"  {self.left_out_without_factor} not linked, as asked: their flow has no "
                 "factor in any method"
+            )
+        if self.accounting:
+            lines.append(
+                f"  {len(self.accounting)} not linked: entries of account in the source, no "
+                f"exchange with the environment ({'; '.join(self.accounting)})"
+            )
+        if self.country_not_stated:
+            lines.append(
+                f"  {len(self.country_not_stated)} linked to a flow that has factors of single "
+                "countries, and the mapping, which states the country a flow names, does not "
+                "hold them: they take the factor without a location "
+                f"({'; '.join(self.country_not_stated)})"
             )
         if self.unit_unknown:
             first = "; ".join(f"{name} ({a} to {b})" for name, a, b in self.unit_unknown[:3])
@@ -190,13 +215,19 @@ def link(
     targets: Mapping[tuple[str, str, str, str], dict],
     include_without_factor: bool = True,
     locations: Mapping[str, str] | None = None,
+    in_mapping: frozenset[str] | set[str] | None = None,
 ) -> FlowLinks:
     """The bridge, the flows and the methods for ``build()``, from the links.
 
     ``locations`` gives, per source flow code, the country the flow names. The links do not
     state it (``Water, CH`` and ``Water`` end on one flow), so it is taken from where it is
     stated, the mapping of sentier-mappings. ``build()`` then gives the flow that country's
-    factor, as it does for the mapping's own links.
+    factor, as it does for the mapping's own links. ``in_mapping`` are the source flow codes
+    the mapping holds at all: a linked flow outside them, on a target that has factors of
+    single countries, may name a country that nobody states, and the report names it. No
+    country is read from a flow's name here.
+
+    A flow in a compartment of ``ACCOUNTING`` is not linked.
 
     ``source_flows`` are the source's own flow terms (``code, name, categories``); a flow's
     unit is the unit of its exchanges, which is one, because the unit is part of what makes
@@ -213,6 +244,7 @@ def link(
     entries: dict[str, tuple[dict, float]] = {}
     unit_unknown: list[tuple[str, str, str]] = []
     not_in_crosswalk: list[str] = []
+    accounting: list[str] = []
     ends_on: dict[str, list[tuple[str, ...]]] = {}  # flow: where its source flows go
     rows_of: dict[str, dict] = {}
     for code in sorted(units):
@@ -224,6 +256,9 @@ def link(
         compartment = categories[0] if categories else ""
         sub = categories[1] if len(categories) > 1 else ""
         name = str(terms.at[code, "name"])
+        if compartment in ACCOUNTING:
+            accounting.append(name)
+            continue
         row = targets.get((name, compartment, sub, unit))
         if row is None:
             not_in_crosswalk.append(name)
@@ -271,6 +306,7 @@ def link(
             )
         )
     characterised = {code for spec in extended for code, _ in spec.cfs}
+    of_single_countries = {flow for spec in extended for flow, _ in spec.located}
 
     bridge: dict[str, BridgeEntry] = {}
     left_out = 0
@@ -326,6 +362,16 @@ def link(
             1 for e in bridge.values() if e.target_code not in outside and e.target_code in made
         ),
         left_out_without_factor=left_out,
+        accounting=tuple(sorted(accounting)),
+        country_not_stated=tuple(
+            sorted(
+                str(terms.at[code, "name"])
+                for code, entry in bridge.items()
+                if in_mapping is not None
+                and code not in in_mapping
+                and entry.target_code in of_single_countries
+            )
+        ),
     )
     return FlowLinks(
         bridge=MappingProxyType(bridge), ef_flows=flows, methods=tuple(extended), report=report

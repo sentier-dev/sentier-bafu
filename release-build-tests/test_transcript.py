@@ -252,7 +252,8 @@ class StepLines(unittest.TestCase):
         compared = step_lines.lines("comparison", self.out)
         self.assertRegex(
             compared[0],
-            r"exchange rows compared with bafu-2026: [\d,]+ changed, \d+ that no step explains",
+            r"exchange rows compared with bafu-2026: [\d,]+ changed, "
+            r"\d+ that no step recorded on their dataset explains",
         )
         self.assertRegex(compared[-1], r"^  comparison \w+$")
         exported = step_lines.lines("exports", self.out)
