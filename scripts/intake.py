@@ -495,6 +495,17 @@ REPLIES = {
         "A second measurement of **{finding}** is already proposed in {pull}, and a maintainer decides "
         "there. Yours is welcome here in the discussion."
     ),
+    "declined": (
+        "A maintainer closed {pull}, which proposed your second measurement of **{finding}**, without "
+        "merging it. A further comment does not open it again: a maintainer reopens it if the "
+        "measurement is to be recorded. What you measured stays useful here in the discussion."
+    ),
+    "no-pull": (
+        "The record of **{finding}** is written on the branch `{branch}`, but the pull request could "
+        "not be opened: this repository does not let its workflows open pull requests (Settings → "
+        "Actions → General → Workflow permissions). A maintainer opens the pull request from that "
+        "branch, or allows it and comments `/record`."
+    ),
     "by-hand": (
         "The record proposed in {pull} was changed by hand after it was proposed, so the edit of this "
         "issue is not copied into it. A maintainer brings the two together in that pull request."
@@ -744,6 +755,7 @@ def plan_repeat(asked, comment, number, here, findings, root, config, marker, va
         "why": "repeat",
         "kind": "repeat",
         "forced": True,
+        "by": changed["repeated"]["by"],
         "issue": number,
         "finding": rid,
         "base": values["base"],
@@ -753,12 +765,29 @@ def plan_repeat(asked, comment, number, here, findings, root, config, marker, va
         "commit": f"findings: record the second measurement of {rid} ({words})\n\n"
                   f"From a comment on issue #{number}. A person reads the comment and merges.",
         "title": f"findings: record the second measurement of {rid} ({words})",
-        "body": PULL_BODY["repeat"].format(finding=rid, issue=number, result=words, url=url, **values),
+        "body": PULL_BODY["repeat"].format(finding=rid, issue=number, result=words, url=url, **values)
+        + REPEATED_BY.format(login=changed["repeated"]["by"]),
         "marker": marker,
         "comment": REPLIES["repeated"].format(finding=rid, pull="{pull}", **values),
         "remove_labels": [],
         "notes": [],
     }
+
+
+#: Who measured, at the end of the body of a pull request for a second measurement: a later
+#: comment by the same person finds a proposal a maintainer closed, and does not repeat it.
+REPEATED_BY = "\n\n<!-- intake: repeated-by {login} -->"
+_REPEATED_BY = re.compile(r"<!-- intake: repeated-by (\S+) -->")
+
+
+def declined_for(pull, login):
+    """Whether a closed pull request for a second measurement was a maintainer's no to
+    `login`: it was not merged, and it proposed that person's measurement. One that does not
+    say whose measurement it proposed counts for everyone."""
+    if pull.get("state") != "closed" or pull.get("merged_at") or pull.get("merged"):
+        return False
+    named = _REPEATED_BY.search(pull.get("body") or "")
+    return named is None or community.same_person(named.group(1), login)
 
 
 # --------------------------------------------------------------------------------- publish
@@ -799,6 +828,15 @@ def publish(plan, api):
     if not opened and pulls and plan["kind"] == "new" and not plan["forced"]:
         # A maintainer closed the proposal. An edit of the issue does not bring it back.
         return dict(done, done="nothing", why="closed-before")
+    if not opened and plan["kind"] == "repeat":
+        # A maintainer closed the proposal of this person's measurement without merging it.
+        # Another comment by the same person does not bring it back, and is answered once.
+        declined = [pull["number"] for pull in pulls if declined_for(pull, plan["by"])]
+        if declined:
+            number = max(declined)
+            api.comment_once(issue, f"intake: declined {number}",
+                             REPLIES["declined"].format(pull=f"#{number}", **values))
+            return dict(done, done="reply", why="declined", pull=number)
     head = api.get(f"/git/ref/heads/{base}")["object"]["sha"]
     payload = {"message": plan["commit"], "content": base64.b64encode(content.encode()).decode(), "branch": branch}
     if opened:
@@ -829,7 +867,15 @@ def publish(plan, api):
         if current:
             payload["sha"] = current[0]
         sha = api.put(f"/contents/{path}", payload)["commit"]["sha"]
-        pull = api.post("/pulls", {"title": plan["title"], "head": branch, "base": base, "body": plan["body"]})["number"]
+        try:
+            pull = api.post("/pulls", {"title": plan["title"], "head": branch, "base": base, "body": plan["body"]})["number"]
+        except ApiError as error:
+            if error.status == 403:
+                # The repository does not let a workflow open pull requests. The record is on
+                # its branch; say so on the issue, once, and fail: the setting is to be put right.
+                api.comment_once(issue, f"intake: no-pull {branch}",
+                                 REPLIES["no-pull"].format(branch=branch, **values))
+            raise
     if not SHA.fullmatch(str(sha)) or not isinstance(pull, int):
         raise ApiError("PUT", f"/contents/{path}", 200, "no commit")
     api.comment_once(issue, plan["marker"], plan["comment"].replace("{pull}", f"#{pull}"))

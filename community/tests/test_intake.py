@@ -818,6 +818,54 @@ class PublishTests(Workspace):
         self.publish(commented(issue(41), "/repeated reproduced"), "issue_comment")
         self.assertEqual(len(self.fake.writes()), writes)
 
+    def test_a_second_measurement_a_maintainer_closed_is_not_proposed_again_by_that_person(self):
+        self.publish(commented(issue(41), "/repeated reproduced"), "issue_comment")
+        (first,) = self.fake.pulls
+        self.assertIn("<!-- intake: repeated-by second-person -->", first["body"])
+        first["state"] = "closed"  # a maintainer closed it without merging: a no
+        for cid in (7002, 7003, 7004):
+            done = self.publish(commented(issue(41), "/repeated reproduced", cid=cid), "issue_comment")
+            self.assertEqual((done["done"], done["why"], done["pull"]), ("reply", "declined", first["number"]))
+        self.assertEqual(len(self.fake.pulls), 1, "three more comments, and no pull request more")
+        said = [body for body in self.fake.bodies(41) if "without merging it" in body]
+        self.assertEqual(len(said), 1, "answered once")
+        self.assertIn(f"A maintainer closed #{first['number']}", said[0])
+        # Another person's measurement is their own, and is proposed.
+        done = self.publish(commented(issue(41), "/repeated not-reproduced", {"login": "third", "type": "User"},
+                                      cid=7005), "issue_comment")
+        self.assertEqual(done["done"], "written")
+        self.assertEqual([pull["state"] for pull in self.fake.pulls], ["closed", "open"])
+        self.assertIn("<!-- intake: repeated-by third -->", self.fake.pulls[1]["body"])
+        # A maintainer who reopens the closed one decides there again: the comment then waits.
+        self.fake.pulls[1]["state"] = "closed"
+        first["state"] = "open"
+        done = self.publish(commented(issue(41), "/repeated reproduced", cid=7006), "issue_comment")
+        self.assertEqual((done["done"], done["why"]), ("reply", "pending"))
+
+    def test_a_closed_proposal_that_names_nobody_is_a_no_to_everyone_and_a_merged_one_to_no_one(self):
+        nobody = {"state": "closed", "merged_at": None, "body": "Records a second measurement."}
+        self.assertTrue(intake.declined_for(nobody, "anyone"))
+        named = dict(nobody, body="…" + intake.REPEATED_BY.format(login="Second-Person"))
+        self.assertTrue(intake.declined_for(named, "second-person"), "logins are told apart without case")
+        self.assertFalse(intake.declined_for(named, "third"))
+        self.assertFalse(intake.declined_for(dict(named, merged_at="2026-11-23T08:00:00Z"), "second-person"))
+        self.assertFalse(intake.declined_for(dict(named, state="open"), "second-person"))
+
+    def test_a_repository_that_lets_no_workflow_open_a_pull_request_is_said_on_the_issue(self):
+        """The record is on its branch, the reporter gets a reply, and the job still fails:
+        the setting is something a maintainer has to put right."""
+        for _ in range(2):
+            self.fake.fail = ("POST", "/pulls", 403)
+            with self.assertRaises(ApiError) as refused:
+                self.publish(opened(issue(48)))
+            self.assertEqual(refused.exception.status, 403)
+        self.assertEqual(self.fake.pulls, [])
+        self.assertIn("community/findings/0/F48.json", self.fake.branches["intake/F48"])
+        (comment,) = self.fake.bodies(48)
+        self.assertIn("is written on the branch `intake/F48`, but the pull request could not be opened", comment)
+        # Once the setting is right, the same event opens the pull request.
+        self.assertEqual(self.publish(opened(issue(48)))["done"], "written")
+
     def test_a_second_claim_while_the_first_waits_is_answered_not_recorded(self):
         self.publish(commented(issue(41), "/repeated reproduced"), "issue_comment")
         before = self.fake.branches["repeat/F19"]["community/findings/0/F19.json"]
