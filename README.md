@@ -53,7 +53,7 @@ It builds a Brightway database of BAFU's release and one of the patched copy, bo
 Its state:
 
 - [`community/patches.json`](community/patches.json) lists the community patches with the findings they answer. A script writes it from the patches in `src/bafu_community_fixes/patches/`.
-- The files for Brightway, openLCA, ILCD and SimaPro, and the ecoSpold v1 files, are written and read back on your own machine and in the checks of this repository. A build with a tag keeps them under its tag on GitHub; the site offers each after asking the reader to accept BAFU's Terms of Use, and the notes of the tag begin with those terms. This repository and the site hold no inventory files.
+- The files for Brightway, openLCA, ILCD and SimaPro, and the ecoSpold v1 files, are written and read back on your own machine and in the checks of this repository. A build with a tag keeps them under its tag on GitHub; the site asks the reader to accept BAFU's Terms of Use before it links one (a notice, not a gate: under the tag each downloads without a question), and the notes of the tag begin with those terms. This repository and the site hold no inventory files.
 - No file has been opened in openLCA or in SimaPro yet. The checks read the files with separate programs.
 - Of the build that a maintainer gave a tag, the files above are kept with a manifest of checksums and counts. A local build can be compared with it.
 
