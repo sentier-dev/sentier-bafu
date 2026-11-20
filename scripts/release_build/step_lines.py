@@ -107,7 +107,9 @@ def exports(folder: Path) -> list[str]:
         read = ""
         if file["kind"] in READ_BACK:
             matches = section["read_back_matches"].get(file["kind"])
-            read = "read back: " + {True: "matches", "counted": "counted only"}.get(matches, "differs")
+            read = "read back: " + {True: "matches", "counted": "counted only"}.get(
+                matches, "differs"
+            )
         line = f"  {file['name']:<38} {file['bytes']:>12,} bytes  sha256 {file['sha256'][:12]}"
         lines.append(f"{line}  {read}".rstrip())
     for kind, entry in sorted(section["held_back"].items()):

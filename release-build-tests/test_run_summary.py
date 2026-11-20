@@ -84,7 +84,9 @@ class FromManifest(unittest.TestCase):
         self.assertEqual([value for value in back.values() if value is True], [True, True])
         said = [text for text in account["remarks"] if "is not among the files" in text]
         self.assertEqual(len(said), 2)
-        self.assertTrue(any(text.startswith("The openLCA export was written and read back") for text in said))
+        self.assertTrue(
+            any(text.startswith("The openLCA export was written and read back") for text in said)
+        )
         # another number in the manifest, another figure in the account
         changed = copy.deepcopy(manifest)
         changed["comparison"]["exchange_rows_changed"] = 4321

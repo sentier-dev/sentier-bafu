@@ -3,8 +3,8 @@
 Synthetic tables only. The tests that need pandas are skipped where it isn't installed.
 """
 
-import json
 import importlib.util
+import json
 import sys
 import unittest
 from collections import namedtuple
@@ -425,7 +425,9 @@ class Tables(unittest.TestCase):
         self.assertEqual(result["unexplained_moves"], 1)
         self.assertEqual(result["methods"][0]["moved_by_step"], {AMOUNT: 1, "unexplained": 1})
 
-    def test_a_score_that_is_not_finite_has_moved_and_a_dataset_scored_once_stops_the_comparison(self):
+    def test_a_score_that_is_not_finite_has_moved_and_a_dataset_scored_once_stops_the_comparison(
+        self,
+    ):
         import pandas as pd
 
         index = pd.Index(["a", "b", "c", "d", "e"], name="code")
@@ -443,9 +445,13 @@ class Tables(unittest.TestCase):
         json.dumps(result, allow_nan=False)  # what is written is JSON
         # A dataset that one build scored and the other did not is not left out in silence.
         fewer = after.drop(index="e")
-        with self.assertRaisesRegex(compare.CompareError, "1 only in the first, 0 only in the second"):
+        with self.assertRaisesRegex(
+            compare.CompareError, "1 only in the first, 0 only in the second"
+        ):
             compare.compare_scores(before, fewer, {"climate": {}}, {}, {})
-        with self.assertRaisesRegex(compare.CompareError, "0 only in the first, 1 only in the second"):
+        with self.assertRaisesRegex(
+            compare.CompareError, "0 only in the first, 1 only in the second"
+        ):
             compare.compare_scores(fewer, before, {"climate": {}}, {}, {})
 
     def test_corrected_flows_are_listed_with_the_ef_flow_they_stay_on(self):

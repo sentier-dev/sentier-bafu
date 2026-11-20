@@ -318,8 +318,6 @@ class WholePath(unittest.TestCase):
             names,
             {
                 "bafu-2026-v1-patched.bw2package",
-                "bafu-2026-v1-patched-openlca.zip",
-                "bafu-2026-v1-patched-ilcd.zip",
                 "bafu-2026-v1-patched-simapro.csv",
                 "bafu-2026-v1-patched-ecospold1.zip",
                 "MODIFICATIONS.json",

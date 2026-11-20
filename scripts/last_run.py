@@ -272,7 +272,8 @@ def runs_for_tags(github, workflow, tags):
     `tags`, newest first. GitHub names the tag where it names the branch of a run."""
     listing = github.get(f"/actions/workflows/{workflow}/runs?event=push&per_page=50") or {}
     return [
-        run for run in listing.get("workflow_runs") or ()
+        run
+        for run in listing.get("workflow_runs") or ()
         if str(run.get("head_branch") or "").startswith(tags)
     ]
 
@@ -289,9 +290,12 @@ def fetch(repository, run, token=None, transport=None, fetch=fetch_address):
         default = (github.get("") or {}).get("default_branch")
         if not isinstance(default, str) or not default:
             return empty("no run", repository, run, "the repository names no default branch", now())
-        listing = github.get(
-            f"/actions/workflows/{run['workflow']}/runs?branch={github_api.quoted(default)}&per_page=20"
-        ) or {}
+        listing = (
+            github.get(
+                f"/actions/workflows/{run['workflow']}/runs?branch={github_api.quoted(default)}&per_page=20"
+            )
+            or {}
+        )
     except github_api.NotFound:
         return empty("no run", repository, run, "the repository has no such workflow", now())
     runs = listing.get("workflow_runs") or []

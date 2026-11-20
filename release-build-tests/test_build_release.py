@@ -529,7 +529,9 @@ class ExportCommand(unittest.TestCase):
         header = script.read_text().split("# ///")[1]
         wanted = re.findall(r'#\s+"([^"]+)",', header)
         self.assertGreaterEqual(len(wanted), 7)
-        locked = {package["name"]: package for package in tomllib.loads(lock.read_text())["package"]}
+        locked = {
+            package["name"]: package for package in tomllib.loads(lock.read_text())["package"]
+        }
         for requirement in wanted:
             name = re.split(r"[ @=<>!~]", requirement, maxsplit=1)[0]
             self.assertIn(name, locked, f"{name} is required and not in the lock")

@@ -54,7 +54,9 @@ def fine(manifest, kind):
     entry, check = manifest["formats"][kind], manifest["checks"][kind]
     if kind not in step.HELD_BACK:
         return entry["status"] == "completed" and check["passed"]
-    return entry["status"] == "held back" and all(TURNED in problem for problem in check["problems"])
+    return entry["status"] == "held back" and all(
+        TURNED in problem for problem in check["problems"]
+    )
 
 
 def test_every_export_reads_back_and_matches_the_database(base):
@@ -99,7 +101,11 @@ def test_a_held_back_format_is_written_read_back_and_set_aside(base):
         assert (step.sha256(file), file.stat().st_size) == (entry["sha256"], entry["bytes"])
         assert entry["name"] not in (out / "SHA256SUMS").read_text()
     # What the read-back found stays on record: differences for one, a count only for the other.
-    assert manifest["held_back"]["openlca"]["differences"] == manifest["checks"]["openlca"]["total"] > 0
+    assert (
+        manifest["held_back"]["openlca"]["differences"]
+        == manifest["checks"]["openlca"]["total"]
+        > 0
+    )
     assert manifest["formats"]["openlca"]["error"].endswith("difference(s) from the database")
     assert manifest["held_back"]["ilcd"]["differences"] == 0
     assert manifest["formats"]["ilcd"]["error"] == "counted, not compared with the database"
@@ -1122,7 +1128,9 @@ def test_command_writes_the_exports_and_reports_the_read_back(tmp_path, capsys):
     step.main(_arguments(tmp_path, "--source-sha256", "cd" * 32, "--name", "demo"))
     output = capsys.readouterr().out
     assert "openlca: HELD BACK, not among the files (" in output
-    assert "ilcd: HELD BACK, not among the files (counted, not compared with the database)" in output
+    assert (
+        "ilcd: HELD BACK, not among the files (counted, not compared with the database)" in output
+    )
     assert "simapro: read back and matches" in output
     assert sorted(p.name for p in (tmp_path / "out").iterdir()) == [
         "MODIFICATIONS.json",
