@@ -284,6 +284,34 @@ def test_the_measurement_says_what_the_countrys_factor_changes(data_root, tmp_pa
             "moved_over_10_percent": 2,
             "lower": 0,
             "higher": 2,
+            "near_zero_no_direction": 0,
+            "floor": pytest.approx(1e-9 * P1_CLIMATE_SCORE, rel=0.5),
         }
     ]
     assert "against_published_results" not in found
+
+
+def test_a_direction_is_given_by_value_and_not_for_a_score_that_is_zero_to_the_solve():
+    """Two machines give 1e-17 and -1e-17 for a dataset without water use. It has moved by
+    the rule of 1 %, and which way is noise; the three counts still add up to the moved."""
+    import importlib.util
+    from pathlib import Path
+
+    import numpy as np
+
+    script = Path(__file__).parents[1] / "scripts" / "compare_located_factors.py"
+    spec = importlib.util.spec_from_file_location("compare_located_factors", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    x = np.array([1.0, 2.0, -3.0, 2.3e-17, -2.3e-17, 5.0])
+    y = np.array([0.5, 4.0, -6.0, -2.3e-17, 1.1e-17, 5.0])
+    moved = module.relative(x, y) > 0.01
+    assert moved.tolist() == [True, True, True, True, True, False]
+    found = module.directions(x, y, moved)
+    # -3 to -6 is lower by value, although the amount is larger
+    assert (found["lower"], found["higher"], found["near_zero_no_direction"]) == (2, 1, 2)
+    assert found["lower"] + found["higher"] + found["near_zero_no_direction"] == moved.sum()
+    # the median of the larger scores (2.3e-17 twice, 1, 4, 5, 6) is 2.5
+    assert found["floor"] == pytest.approx(module.NEAR_ZERO * 2.5)
+    assert module.directions(np.zeros(2), np.zeros(2), np.zeros(2, bool))["floor"] == 0.0

@@ -469,8 +469,11 @@ countries and scores all 11,947 datasets. The record is
 | of which have the country's factor in land use | 2 |
 
 - **Water use moves for 5,197 of the 11,947 datasets** by more than 1 %, for 854 of them by
-  more than 10 %. 5,146 go down: a country's factor is mostly lower than the factor without
-  a location.
+  more than 10 %. 5,118 go down and 58 go up: a country's factor is mostly lower than the
+  factor without a location. For 21 the score is zero to the precision of the solve on both
+  sides (1e-17 beside a median of 0.05), and no direction is given: its sign is not the same
+  on two machines. The directions were counted again on 20 November 2026, by the value of
+  the score and above a stated floor; the record says how.
 - **Land use moves for 5 datasets**, all upwards and by more than 10 %: two flows of rail
   land in Switzerland.
 - **No other category moves.**
