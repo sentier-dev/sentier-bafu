@@ -250,6 +250,9 @@ def with_ef_compartments(flows, inventory):
         # BAFU's own compartments, on flows without an EF 3.1 flow.
         "uranium-river": _flow("Uranium alpha", ("emissions to water", "river"), "kilo Becquerel"),
         "noise": _flow("Noise, road", ("non material emissions", "unspecified"), "kilometer"),
+        # A biotic resource of EF 3.1 (standing wood), which only a build of the second
+        # linking holds: one level, `biota`, declared in export_labels.toml.
+        "wood-ef": _flow("wood, standing", ("biota",), "cubic meter", resource),
     }
     flows.update(added)
     inventory["farm"] = _process(

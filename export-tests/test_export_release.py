@@ -908,6 +908,9 @@ def test_compartments_of_the_build_go_to_their_simapro_section(tmp_path):
         ("waste heat | heat-2", "Emissions to air", "", "MJ", 6.5),
         ("Uranium alpha", "Emissions to water", "river", "kBq", 7.5),
         ("Noise, road", "Non material emissions", "unspecified", "km", 8.5),
+        # a biotic resource goes with the raw materials; without its block in the table of
+        # labels the export stops, because the writer would put it under air
+        ("wood, standing", "Resources", "", "m3", 9.5),
     }
     assert manifest["simapro"]["flows_named_with_their_code"] == 2
     # openLCA keeps the compartment as the database has it, and each flow its own id.
