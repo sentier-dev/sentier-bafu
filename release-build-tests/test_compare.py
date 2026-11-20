@@ -522,6 +522,29 @@ class Tables(unittest.TestCase):
         self.assertEqual(found["indicators"][0]["unexplained"], 1)
         mix = next(item for item in found["moved"] if item["id"] == "mix")
         self.assertEqual((mix["classes"]["climate"], mix["causes"]), ("not claimed", []))
+        # A row that no step explains is the comparison's finding, under its label
+        # "unexplained". The label is no cause: a dataset it reaches beside a real step is
+        # listed under the step alone, and one it alone reaches is not claimed.
+        label = before_after_account.UNEXPLAINED
+        by_step = comparison["rows"]["by_step"] | {label: {"rows": 1, "datasets": 1}}
+        labelled = comparison | {
+            "scores": scores_2,
+            "rows": comparison["rows"] | {"by_step": by_step},
+        }
+        moved_3 = {m: {code: [*why, label] for code, why in found.items()}
+                   for m, found in moved_2.items()}  # fmt: skip
+        reach_3 = {m: by | {label: {"farm", "mix"}} for m, by in reach_2.items()}
+        self.assertEqual(moved_3["climate"], {"farm": [AMOUNT, label], "mix": [label]})
+        marked = before_after_account.account(
+            labelled, records, (before.to_dict(), outside.to_dict()), moved_3, names,
+            {"climate": "kg CO2 eq"}, steps, reach_3,
+        )  # fmt: skip
+        self.assertNotIn(label, [cause["id"] for cause in marked["causes"]])
+        by_id = {item["id"]: item for item in marked["moved"]}
+        self.assertEqual(by_id["farm"]["causes"], [AMOUNT])
+        self.assertEqual((by_id["mix"]["causes"], by_id["mix"]["classes"]["climate"]),
+                         ([], "not claimed"))  # fmt: skip
+        self.assertEqual(marked["indicators"][0]["unexplained"], 1)
         wider = reach_2 | {"climate": {AMOUNT: {"farm", "mix"}}}
         with self.assertRaisesRegex(ValueError, "0 moved outside every step's reach"):
             before_after_account.account(

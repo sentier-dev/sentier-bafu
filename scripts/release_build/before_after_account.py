@@ -126,6 +126,12 @@ def sides(baseline: dict, candidate: dict) -> tuple[str, tuple, tuple]:
     return f"{release} and the patched copy", before, patched
 
 
+#: The comparison's label for a changed row, or a moved result, that no step explains. It
+#: is a finding of the comparison and no cause: it has no claim and no reach here, so a
+#: dataset it reaches is not "as claimed" on its account.
+UNEXPLAINED = "unexplained"
+
+
 def derived_claim(name: str, reach: dict[str, dict[str, set]]) -> dict:
     """What a step can move, worked out by the comparison: per method, every dataset
     downstream of what the step changed. For a step that can move no score, that."""
@@ -157,7 +163,7 @@ def causes_of(comparison: dict, steps: dict, moved_by: dict, reach: dict) -> tup
     under both names joined: such a pair has no reach and no count of its own."""
     rows = comparison["rows"]["by_step"]
     found, ids = [], {}
-    for name in sorted(set(rows) | set(moved_by)):
+    for name in sorted((set(rows) | set(moved_by)) - {UNEXPLAINED}):
         entry, step = rows.get(name, {}), steps.get(name, {})
         joined = " + " in name
         ids[name] = text(name, before_after.MAX_ID)
@@ -206,7 +212,15 @@ def account(
     explained: dict[str, set[str]] = {}
     for found in moved.values():
         for code, why in found.items():
-            explained.setdefault(code, set()).update(why)
+            explained.setdefault(code, set()).update(set(why) - {UNEXPLAINED})
+    reach = (
+        None
+        if reach is None
+        else {
+            method: {step: found for step, found in by_step.items() if step != UNEXPLAINED}
+            for method, by_step in reach.items()
+        }
+    )
     moved_by: dict[str, int] = {}
     for why in explained.values():
         for name in why:
@@ -246,7 +260,7 @@ def account(
         item_causes={
             code: [ids[name] for name in why if name in ids] for code, why in explained.items()
         },
-        unexplained={m: counted[m]["moved_by_step"].get("unexplained", 0) for m in methods},
+        unexplained={m: counted[m]["moved_by_step"].get(UNEXPLAINED, 0) for m in methods},
         listed=listed,
         keep_items=False,  # which datasets a step reaches stays here; the file says how many
         step="comparison",
