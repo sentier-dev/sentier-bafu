@@ -34,6 +34,7 @@ import synthetic_release  # noqa: E402
 
 ENTRY = REPOSITORY / "scripts" / "build_release.py"
 CLIMATE, FOSSILS = "ef-3.1:climate-change", "ef-3.1:resource-use-fossils"
+WATER = "ef-3.1:water-use"
 RENAMED = "0007-flow-names"
 MOVED = "0008-flow-compartments"
 AMOUNT = "0001-strawberry-polyethylene-disposal"
@@ -136,13 +137,13 @@ class WholePath(unittest.TestCase):
         self.assertEqual((record["status"], record["linking"]), ("completed", "brightway-flows"))
         self.assertEqual(self.load("provider", "build.json")["linking"], "sentier-mappings")
         report = "\n".join(record["coverage"])
-        self.assertIn("Linked through Brightway Flows (the links of patch 0010): 5/5 flows", report)
+        self.assertIn("Linked through Brightway Flows (the links of patch 0010): 6/6 flows", report)
         self.assertIn("1 linked with a conversion the release states", report)
         steps = json.loads((self.linked / "build-steps.json").read_text())
         self.assertIn("through the links of patch 0010", steps[0]["description"])
 
     def test_the_two_linkings_differ_where_the_conversion_differs_and_nowhere_else(self):
-        """The made-up release has five elementary flows, all on flows of EF 3.1 both ways.
+        """The made-up release has six elementary flows, all on flows of EF 3.1 both ways.
         One is natural gas in Nm3, counted in MJ by EF 3.1: the mapping states 35.98 MJ per
         Nm3 and Brightway Flows 36.0. So fossil resource use differs by exactly that ratio
         wherever gas is used, and every other score is the same."""
@@ -192,6 +193,9 @@ class WholePath(unittest.TestCase):
         record = json.loads((self.linked_run / "patched" / "build.json").read_text())
         kept = self.linked_run / "patched" / "flow-links.csv"
         self.assertEqual(kept.read_bytes(), build_release_flow_links().read_bytes())
+        # the file is under the Open Database License: its notice is beside the copy
+        notice = kept.with_name("flow-links.csv.NOTICE.md")
+        self.assertIn("Open Database License 1.0", notice.read_text())
         self.assertEqual(record["install"]["flow_links"]["file"], build_release_flow_links().name)
         self.assertEqual(record["install"]["flow_terms_of"], "bafu-2026")
         exports = json.loads(
@@ -230,11 +234,11 @@ class WholePath(unittest.TestCase):
         found = json.loads(out.read_text())
         self.assertEqual(found["data"], "supplied with --data-root")
         flows, scores = found["flows"], found["scores"]
-        self.assertEqual((flows["flows_used"], scores["datasets"]), (5, 8))
-        # four of the five flows have a factor, the same four both ways (heat has none in
+        self.assertEqual((flows["flows_used"], scores["datasets"]), (6, 8))
+        # five of the six flows have a factor, the same five both ways (heat has none in
         # any method); no flow loses or gains one
         with_factor = flows["flows_with_a_factor_in_some_method"]
-        self.assertEqual(with_factor, {"sentier-mappings": 4, "brightway-flows": 4})
+        self.assertEqual(with_factor, {"sentier-mappings": 5, "brightway-flows": 5})
         self.assertEqual((flows["lost"], flows["gained"]), ([], []))
         # the gas conversion moves fossil resource use by 0.06 %, which is under the 1 % line
         self.assertEqual(scores["moved_in_any_category_over_1_percent"], 0)
@@ -264,7 +268,7 @@ class WholePath(unittest.TestCase):
             self.assertEqual(audit["datasets"], 8)
             self.assertEqual(
                 audit["exchanges"],
-                {"biosphere": 8, "production": 8, "technosphere": 6, "total": 22, "other_kinds": 0},
+                {"biosphere": 9, "production": 8, "technosphere": 6, "total": 23, "other_kinds": 0},
             )
             self.assertEqual(set(audit["unlinked"].values()), {0})
             self.assertEqual(audit["biosphere_targets"]["no_ef_3_1_flow"], 0)
@@ -301,6 +305,11 @@ class WholePath(unittest.TestCase):
                 self.assertAlmostEqual(climate[code] / value, 1.0, places=6, msg=(build, code))
             for code, value in expected["fossils"].items():
                 self.assertAlmostEqual(fossils[code], value, places=4, msg=(build, code))
+            # the flow that names Switzerland scores with Switzerland's factor, not the world's
+            water = self.scores(build, WATER)
+            for code, value in expected["water"].items():
+                self.assertAlmostEqual(water[code] / value, 1.0, places=5, msg=(build, code))
+            self.assertEqual(self.load(build, "build.json")["install"]["located"], True)
 
     def test_what_moved_is_kept_for_the_site_in_the_format_every_site_reads(self):
         sys.path.insert(0, str(REPOSITORY / "scripts"))
@@ -446,7 +455,7 @@ class WholePath(unittest.TestCase):
 
     def test_every_changed_row_is_explained(self):
         rows = self.load("comparison.json")["rows"]
-        self.assertEqual(rows["exchange_rows_compared"], 22)
+        self.assertEqual(rows["exchange_rows_compared"], 23)
         self.assertEqual(rows["unexplained_count"], 0)
         self.assertEqual(rows["by_step"][AMOUNT], {"amount": 1, "rows": 1, "datasets": 1})
         self.assertEqual(rows["by_step"][RENAMED], {"name": 1, "rows": 1, "datasets": 1})
@@ -519,11 +528,33 @@ class WholePath(unittest.TestCase):
             {kind: check["passed"] for kind, check in manifest["checks"].items()},
             {
                 "brightway": True,
-                "openlca": True,
+                # The JSON-LD writer marks emissions as inputs; the read-back says so.
+                "openlca": False,
                 "ilcd": True,
                 "simapro": True,
                 "ecospold1": True,
             },
+        )
+        # The two formats that are held back are set aside and are not among the files.
+        self.assertEqual(
+            {kind: entry["status"] for kind, entry in manifest["formats"].items()},
+            {
+                "brightway": "completed",
+                "openlca": "held back",
+                "ilcd": "held back",
+                "simapro": "completed",
+                "ecospold1": "completed",
+            },
+        )
+        self.assertEqual(sorted(manifest["held_back"]), ["ilcd", "openlca"])
+        self.assertTrue(
+            all("wrong direction" in line for line in manifest["checks"]["openlca"]["problems"])
+        )
+        self.assertFalse({"openlca", "ilcd"} & set(manifest["files"]))
+        held = self.out / "exports" / "patched" / "held-back"
+        self.assertEqual(
+            sorted(path.name for path in held.iterdir()),
+            sorted(entry["name"] for entry in manifest["held_back"].values()),
         )
         self.assertEqual(manifest["label"], "Modified Data")
         self.assertEqual(manifest["counts"]["activities"], 8)
@@ -538,8 +569,6 @@ class WholePath(unittest.TestCase):
             names,
             {
                 "bafu-2026-v1-patched.bw2package",
-                "bafu-2026-v1-patched-openlca.zip",
-                "bafu-2026-v1-patched-ilcd.zip",
                 "bafu-2026-v1-patched-simapro.csv",
                 "bafu-2026-v1-patched-ecospold1.zip",
                 "MODIFICATIONS.json",
@@ -679,7 +708,21 @@ class WholePath(unittest.TestCase):
         self.assertEqual(manifest["brightway"]["provider"]["database"], "bafu-2026")
         self.assertEqual(manifest["comparison"]["rows_no_step_explains"], 0)
         exports = manifest["exports"]["patched"]
-        self.assertEqual(set(exports["read_back_matches"].values()), {True})
+        self.assertEqual(
+            exports["read_back_matches"],
+            {
+                "brightway": True,
+                "openlca": False,
+                "ilcd": "counted",
+                "simapro": True,
+                "ecospold1": True,
+            },
+        )
+        self.assertEqual(sorted(exports["held_back"]), ["ilcd", "openlca"])
+        self.assertGreater(exports["held_back"]["openlca"]["differences"], 0)
+        self.assertEqual(exports["held_back"]["ilcd"]["differences"], 0)
+        self.assertFalse({"openlca", "ilcd"} & {entry["kind"] for entry in exports["files"]})
+        self.assertEqual(manifest["status"], "completed", "a held-back format fails no run")
         self.assertIs(exports["published"], False)
         listed = {entry["name"]: entry["sha256"] for entry in exports["files"]}
         sums = (self.out / "exports" / "patched" / "SHA256SUMS").read_text().splitlines()

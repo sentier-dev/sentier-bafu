@@ -57,15 +57,9 @@ class ChainError(ValueError):
 
 
 def read_json(path: Path):
-    # Two clauses, not one of two errors: the formatter writes such a clause without its
-    # parentheses, which Python 3.12 can't read, and the build starts on 3.12.
     try:
-        text = Path(path).read_text(encoding="utf-8")
-    except OSError:
-        return None
-    try:
-        return json.loads(text)
-    except ValueError:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
         return None
 
 

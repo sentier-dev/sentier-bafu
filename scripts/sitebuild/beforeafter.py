@@ -191,8 +191,19 @@ def class_totals(data):
     return found
 
 
-def verdict(totals, noise):
-    """One sentence on what the classes add up to. It counts; it does not judge the change."""
+def stated_claims(data) -> bool:
+    """Whether any cause carries a claim its author stated (not one worked out from its reach)."""
+    return any(
+        cause.get("claim") and not cause["claim"].get("derived") for cause in data.get("causes") or ()
+    )
+
+
+def verdict(totals, noise, stated=True):
+    """One sentence on what the classes add up to. It counts; it does not judge the change.
+
+    `stated` says whether any claim was stated by the author of its cause. Where every claim
+    was worked out by the comparison from what a cause changed, "as claimed" would read like
+    a second check and is none: the classes then repeat what the comparison found."""
     odd = totals[before_after.OFF_CLAIM] + totals[before_after.NOT_CLAIMED]
     unmet, claimed, within = totals[before_after.NOT_MOVED], totals[before_after.AS_CLAIMED], totals[before_after.NOISE]
     if odd:
@@ -207,6 +218,13 @@ def verdict(totals, noise):
         kind = "open"
         text = f"{plural(within, 'value')} moved, and none can be told from noise."
         more = "Two builds of the same state differ by as much, so this comparison cannot show what the change did."
+    elif claimed and not stated:
+        kind = "fine"
+        text = f"{plural(claimed, 'value')} moved, all inside what a cause can reach."
+        more = (
+            "No claim here was stated by an author: each was worked out by the comparison from what a cause changed. "
+            "So this repeats that the comparison found nothing unexplained, and is not a second check."
+        )
     elif claimed:
         kind = "fine"
         text = f"{plural(claimed, 'value')} moved, all as claimed."
@@ -232,7 +250,7 @@ def classes_block(data):
     return (
         '<h2 id="classes">What moved, against what was claimed</h2>'
         f"<p>Each value is one {esc(data['items']['one'])} in one {esc(words(data)[0])}.</p>"
-        f"{verdict(totals, data.get('noise'))}"
+        f"{verdict(totals, data.get('noise'), stated=stated_claims(data))}"
         f'<dl class="ba-classes">{cards}</dl>'
     )
 

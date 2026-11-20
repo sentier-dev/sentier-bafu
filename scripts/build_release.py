@@ -91,6 +91,8 @@ DIAGNOSTICS = "diagnostics.json"
 # and, for a run that also built contributions, the builds and the pairs that were compared
 # (scripts/runrecord/review.py)
 REVIEW = "review.json"
+NOTICE_SUFFIX = ".NOTICE.md"  # as `notice_of` in the installer's files.py
+FLOW_LINKS_NOTICE = FLOW_LINKS.with_name(FLOW_LINKS.name + NOTICE_SUFFIX)
 # Where sentier-importers' registry expects BAFU's release, below its data root
 IMPORTER_INPUT = Path("sources") / "bafu-2026" / "BAFU-2026 v1_ecoSpold v1.zip"
 IMPORTER_SOURCES = ("bafu-processes", "bafu-exchanges")
@@ -281,12 +283,7 @@ def plan(args: argparse.Namespace) -> dict:
         )
     located = not getattr(args, "skip_located", False)
     if not located:
-        if patched:
-            raise BuildError(
-                "The world's factors are for BAFU's release as it is (--no-patches): the state "
-                "before the countries' factors, which the comparison shows as a step of its own"
-            )
-        default_label = "provider release, the world's factors"
+        default_label += ", the world's factors"
     return {
         "located": located,
         "label": args.label or default_label,
@@ -369,6 +366,11 @@ def build(args: argparse.Namespace) -> int:
             raise BuildError(f"{FLOW_LINKS} is not there; the Brightway Flows linking needs it")
         kept = out / KEPT_FLOW_LINKS
         shutil.copyfile(FLOW_LINKS, kept)
+        # The file is under the Open Database License; its notice goes with every copy,
+        # and the installer passes it on with the copy it keeps in a files export.
+        if not FLOW_LINKS_NOTICE.is_file():
+            raise BuildError(f"{FLOW_LINKS_NOTICE} is not there; the copy of the links needs it")
+        shutil.copyfile(FLOW_LINKS_NOTICE, out / (KEPT_FLOW_LINKS + NOTICE_SUFFIX))
         flow_links = ["--flow-links", str(kept)]
     record = {
         "label": paths["label"],
@@ -636,6 +638,7 @@ def build(args: argparse.Namespace) -> int:
                     *("--xlsx", str(workbook.resolve())),
                     *flows_of,
                     *flow_links,
+                    *([] if paths["located"] else ["--skip-located"]),
                 ),
                 project.env(),
             )
@@ -941,7 +944,10 @@ def export_command(folder: Path, destination: Path) -> list[str] | None:
     export = record.get("export")
     if not export or not export.get("summary"):
         return None
-    command = ["uv", "run", "--python", "3.12", str(EXPORT)]
+    # `--locked`: the script's own requirements and everything they pull in are the versions
+    # of `export_release.py.lock`, on every run, a tagged one too. A lock that no longer fits
+    # the script's requirements stops the step.
+    command = ["uv", "run", "--locked", "--python", "3.12", str(EXPORT)]
     command += ["--brightway-dir", export["brightway_dir"], "--project", export["project"]]
     for database in export["databases"]:
         command += ["--database", database]
@@ -958,15 +964,9 @@ def review_of(out: Path, provider: Path, patched: Path, contributions, summary: 
     without a contribution compared one pair, and its comparison says all there is."""
 
     def read(path):
-        # Two clauses, not one of two errors: the formatter writes such a clause without its
-        # parentheses, which Python 3.12 can't read, and this script runs on 3.12.
         try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
-            return None
-        try:
-            return json.loads(text)
-        except ValueError:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
             return None
 
     builds = [
@@ -1063,6 +1063,7 @@ def release(args: argparse.Namespace) -> int:
     options = [*shared, "--pinned-data", str((args.pinned_data or out / "pinned-data").resolve())]
     options += ["--labels", str(args.labels.resolve()), "--xsd-check", args.xsd_check]
     options += ["--linking", args.linking]
+    options += ["--skip-located"] if args.skip_located else []
     options += ["--sample", str(args.sample.resolve())] if args.sample else []
     if args.published_results:
         options += ["--published-results", str(args.published_results.resolve())]
@@ -1291,12 +1292,6 @@ def arguments() -> argparse.ArgumentParser:
     )
     b.add_argument("out", type=Path, help="Empty folder for everything the build writes")
     b.add_argument("--no-patches", action="store_true", help="Build the provider release as is")
-    b.add_argument(
-        "--skip-located",
-        action="store_true",
-        help="With --no-patches: give every elementary flow the world's factor, also one that "
-        "names a country. The state before the countries' factors, for the comparison",
-    )
     linking_help = (
         "How elementary flows are linked to the flows of the impact methods: through the "
         "mapping of sentier-mappings (default), or through Brightway Flows, with the links "
@@ -1304,7 +1299,14 @@ def arguments() -> argparse.ArgumentParser:
         "flows lose their factor under it, and nothing built with it is kept under a tag "
         "(docs/brightway-build.md)."
     )
+    located_help = (
+        "Give every elementary flow the factor without a location, also a flow that names a "
+        "country (`Water, CH`). Without this option such a flow takes its country's factor "
+        "where a method has one: water use comes closer to BAFU's published results, land "
+        "use moves away for five datasets (docs/brightway-build.md)."
+    )
     b.add_argument("--linking", choices=LINKINGS, default=LINKINGS[0], help=linking_help)
+    b.add_argument("--skip-located", action="store_true", help=located_help)
     b.add_argument("--only", nargs="+", metavar="ID", help="Apply only these patches")
     b.add_argument("--skip", nargs="+", metavar="ID", help="Don't apply these patches")
     b.add_argument(
@@ -1401,6 +1403,7 @@ def arguments() -> argparse.ArgumentParser:
         "(repeatable); its database and exports say if nobody has",
     )
     r.add_argument("--linking", choices=LINKINGS, default=LINKINGS[0], help=linking_help)
+    r.add_argument("--skip-located", action="store_true", help=located_help)
     r.add_argument("--xsd-check", choices=("off", "end", "every-step"), default="every-step")
     r.add_argument("--sample", type=Path, help="Datasets the audit scores (see `build`)")
     r.add_argument("--labels", type=Path, default=LABELS, help="See `build`")

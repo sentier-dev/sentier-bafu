@@ -83,10 +83,12 @@ def test_only_summaries_and_results_without_inventory_are_uploaded():
     # the files the manifest lists, for a day at most.
     handed = uploads[2]
     assert "name: patched-copy-files" in handed and "retention-days: 1" in handed
-    assert re.findall(r"\n {12}(\S.*)", handed)[:3] == [
+    assert re.findall(r"\n {12}(\S.*)", handed) == [
         "${{ runner.temp }}/release-run/exports/patched/",
         "!${{ runner.temp }}/release-run/exports/patched/manifest.json",
         "!${{ runner.temp }}/release-run/exports/patched/SHA256SUMS",
+        # a format that is held back is set aside there and is not among a tag's files
+        "!${{ runner.temp }}/release-run/exports/patched/held-back/**",
     ]
     condition = BUILD.split("name: Hand the export files to the job that keeps them")[1].split(
         "uses:"
@@ -95,7 +97,7 @@ def test_only_summaries_and_results_without_inventory_are_uploaded():
     for text in EVERYTHING:
         assert "--report" not in text  # the HTML report quotes the data
     assert "exports/" not in PROPOSED
-    assert BUILD.count("release-run/exports/patched") == 4  # the check, and the hand-over
+    assert BUILD.count("release-run/exports/patched") == 5  # the check, and the hand-over
 
 
 def test_what_is_uploaded_or_summarised_names_nobody_who_confirmed_for_the_provider():

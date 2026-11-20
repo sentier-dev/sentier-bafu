@@ -33,11 +33,13 @@ ref = "51ba6be54c90ac9fdf78fbecc6b0f4cdb6718273"
 "terms/ef-3.1-10.parquet" = "405f8cb76df891c49c312e4716059fdbbf052f6c192657c4811516d7321e0313"
 "terms/ef-3.1-11.parquet" = "aab6d2e74f638d44941f1bcc403639978cc2ed14807c29694e26f1e88924b995"
 
-# sentier-methods: --ref override (main HEAD was ec5983677f06ad5d9dd62faf35d2877335a9c8d4)
+# sentier-methods: the head of main. The pin before it, ba536459f320ec694ce778be6e632048a1c777dc,
+# is on no branch since main was rewritten in September 2026, so GitHub may stop serving it.
+# The three files below are the same bytes at both commits.
 [[source]]
 name = "sentier-methods"
 repo = "sentier-dev/sentier-methods"
-ref = "ba536459f320ec694ce778be6e632048a1c777dc"
+ref = "ec5983677f06ad5d9dd62faf35d2877335a9c8d4"
 [source.files]
 "data/01-ef-3.1/characterization-factors.parquet" = "6c2eaa4f47d403600ed0ca972b7b82894acba5b145464ad11eb5882f16df31cc"
 "data/01-ef-3.1/metadata.json" = "a8945b380ef6688dca64e9008d5ffd8a97b338d864d2facae39d1ee6cf74eb1e"

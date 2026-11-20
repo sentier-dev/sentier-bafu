@@ -58,8 +58,8 @@ process; peak memory is the largest resident size of the step's process tree:
 | patched build | 300 | 1.5 GB | 14 import fixes and 11 patches; 11,601 datasets changed; audit passed without a finding |
 | written files | 7 | 0.1 GB | 11,947 files valid EcoSpold 1, and the ones the summary describes |
 | patch run | under 1 | | every patch changed as much as in the earlier run |
-| comparison | 3 | 1.1 GB | 188 of 420,063 exchange rows differ, each explained by a step; in each of 25 methods the scores of three datasets move, all three by patch 0001 |
-| exports | 188 | 3.0 GB | four formats written, each read back without a difference |
+| comparison | 3 | 1.1 GB | 188 of 420,063 exchange rows differ, each explained by a step recorded on its dataset (the attribution is by dataset, not by exchange); in each of 25 methods the scores of three datasets move, all three by patch 0001 |
+| exports | 188 | 3.0 GB | four formats written and read back. In that run no difference was found; the read-back did not yet compare the direction of an exchange, and the ILCD package was only counted. Since 20 November 2026 the openLCA and ILCD files are held back ([exports.md](exports.md)) |
 | the whole command | 615 | 3.2 GB | |
 
 Since 14 November 2026 the exports step also packs the patched files as ecoSpold v1 with
@@ -168,10 +168,11 @@ Brightway, openLCA, ILCD and SimaPro, the ecoSpold v1 archive, and `MODIFICATION
 also when keeping them failed (Manuel Klarmann, 14 November 2026).
 
 The files are Modified Data, and BAFU's Terms of Use ask that whoever receives them accepts
-the terms. The site offers each file only after asking for that ("Downloads from this site"
-in [Data and terms](terms-of-use.md)). A page of a tag on GitHub can't ask: the notes of the
-tag begin with the terms, in the words the site's dialog uses, and lead to the site's page of
-them. The record of changes in the files names who confirmed a problem for BAFU only as
+the terms. The site asks for that before it links a file ("Downloads from this site" in
+[Data and terms](terms-of-use.md)). The question is a notice in the page, not a gate: a page
+of a tag on GitHub can't ask, lists the same files, and each downloads there or by its
+address without a question. So the notes of the tag begin with the terms, in the words the
+site's dialog uses, and lead to the site's page of them. The record of changes in the files names who confirmed a problem for BAFU only as
 "BAFU (date)".
 
 The manifest (`scripts/release_build/release_manifest.py`, format

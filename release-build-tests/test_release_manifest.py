@@ -196,17 +196,54 @@ def comparison(baseline, candidate, step_id="0001-amount"):
     }
 
 
+TURNED = "('db', 'x'): 2 elementary exchange(s) in the wrong direction"
+
+
 def exports(name):
+    """The exports' own manifest as the step writes it today: four formats written and read
+    back, two of them held back and set aside, so not among the files."""
     kinds = ("brightway", "openlca", "ilcd", "simapro")
+    formats = {kind: {"status": "completed", "seconds": {"write": 1.0}} for kind in kinds}
+    checks = {
+        kind: {"passed": True, "problems": [], "total": 0, "depth": "compared"} for kind in kinds
+    }
+    formats["openlca"] |= {
+        "status": "held back",
+        "stage": "read back",
+        "error": "3 difference(s) from the database",
+    }
+    checks["openlca"] |= {"passed": False, "problems": [TURNED] * 3, "total": 3}
+    formats["ilcd"] |= {
+        "status": "held back",
+        "stage": "read back",
+        "error": "counted, not compared with the database",
+    }
+    checks["ilcd"]["depth"] = "counted"
     return {
         "status": "completed",
         "label": "Modified Data",
         "labels": {"file": "export_labels.toml", "sha256": A, "amounts_converted": 0},
-        "formats": {kind: {"status": "completed", "seconds": {"write": 1.0}} for kind in kinds},
-        "checks": {kind: {"passed": True, "problems": [], "total": 0} for kind in kinds},
+        "formats": formats,
+        "checks": checks,
         "files": {
             "brightway": {"name": f"{name}.bw2package", "bytes": 10, "sha256": A},
             "simapro": {"name": f"{name}-simapro.csv", "bytes": 20, "sha256": B},
+        },
+        "held_back": {
+            "openlca": {
+                "reason": "The writer marks every elementary exchange as an input.",
+                "name": f"{name}-openlca.zip",
+                "bytes": 30,
+                "sha256": A,
+                "differences": 3,
+            },
+            "ilcd": {
+                "reason": "The read-back only counts the datasets.",
+                "name": f"{name}-ilcd.zip",
+                "bytes": 40,
+                "sha256": B,
+                "differences": 0,
+            },
         },
         "counts": {"activities": 3, "elementary_flows": 5, "exchanges": 30},
     }
@@ -465,7 +502,25 @@ class WholeManifest(Folder):
                 },
             ],
         )
-        self.assertEqual(set(exports_["read_back_matches"].values()), {True})
+        # True or false where a file was compared with the database; "counted" where its
+        # datasets were only counted. A format that is held back is said, with its reason,
+        # and is not among the files.
+        self.assertEqual(
+            exports_["read_back_matches"],
+            {"brightway": True, "openlca": False, "ilcd": "counted", "simapro": True},
+        )
+        self.assertEqual(
+            exports_["held_back"],
+            {
+                "openlca": {
+                    "reason": "The writer marks every elementary exchange as an input.",
+                    "differences": 3,
+                },
+                "ilcd": {"reason": "The read-back only counts the datasets.", "differences": 0},
+            },
+        )
+        self.assertFalse({"openlca", "ilcd"} & {entry["kind"] for entry in exports_["files"]})
+        self.assertEqual(exports_["formats"]["ilcd"]["status"], "held back")
         self.assertIs(exports_["published"], False)
         # made for a tag and nothing in the way: its export files are to be kept under the tag
         self.assertIs(data["exports"]["published"], True)

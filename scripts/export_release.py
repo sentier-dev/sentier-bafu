@@ -302,6 +302,21 @@ def _fits_simapro(text):
     return True
 
 
+def simapro_section(categories, labels):
+    """`(section, levels used)` of a flow's compartment, or `(None, None)` when neither the
+    declared table nor the CSV writer's own rule knows it."""
+    writer = {name: section for section, name in SIMAPRO_COMPARTMENT.items()}
+    writer |= {"resource": "Resources", "land": "Resources", "biotic": "Resources"}
+    writer |= {"in ground": "Resources", "in water": "Resources", "in air": "Resources"}
+    lowered = tuple(c.strip().lower() for c in categories)
+    depth = next((n for n in (2, 1) if lowered[:n] in labels["compartments"]), None)
+    if depth is not None:
+        return labels["compartments"][lowered[:depth]], depth
+    if lowered[:1] and lowered[0] in writer:
+        return writer[lowered[0]], 1
+    return None, None
+
+
 def simapro_flows(nodes, labels):
     """`{flow key: (section, name, subcompartment)}` for the elementary flows in use.
 
@@ -313,19 +328,11 @@ def simapro_flows(nodes, labels):
     the file's encoding can hold it (`simapro_text`); one that it can't hold stops the
     export, because the writer would put "?" in its place.
     """
-    writer = {name: section for section, name in SIMAPRO_COMPARTMENT.items()}
-    writer |= {"resource": "Resources", "land": "Resources", "biotic": "Resources"}
-    writer |= {"in ground": "Resources", "in water": "Resources", "in air": "Resources"}
-    rows, unknown, unwritable = {}, Counter(), {}
+    rows, unknown, unwritable, rewritten = {}, Counter(), {}, set()
     for key in used_flows(nodes):
         categories = tuple(str(c) for c in nodes[key].get("categories") or ())
-        lowered = tuple(c.strip().lower() for c in categories)
-        depth = next((n for n in (2, 1) if lowered[:n] in labels["compartments"]), None)
-        if depth is not None:
-            section = labels["compartments"][lowered[:depth]]
-        elif lowered[:1] and lowered[0] in writer:
-            section, depth = writer[lowered[0]], 1
-        else:
+        section, depth = simapro_section(categories, labels)
+        if section is None:
             unknown[" / ".join(categories[:2]) or "(none)"] += 1
             continue
         sub = categories[-1] if len(categories) > depth else ""
@@ -334,6 +341,8 @@ def simapro_flows(nodes, labels):
         )
         if lost or lost_sub:
             unwritable[_clean(nodes[key].get("name"))] = sorted(set(lost + lost_sub))
+        if name != _clean(nodes[key].get("name")):
+            rewritten.add(key)
         rows[key] = (section, name, sub)
     if unknown:
         listed = ", ".join(f"{name!r} ({count} flows)" for name, count in sorted(unknown.items()))
@@ -352,6 +361,19 @@ def simapro_flows(nodes, labels):
             f"write it: {listed}. Extend `simapro_text`."
         )
     shared = Counter(rows.values())
+    # A name that was spelled out and is then the name of another flow in the same
+    # compartment (`α-HCH` beside `alpha-HCH`): the list of spelled-out names would say
+    # `alpha-HCH` for both, and the file could not be mapped back to the database.
+    taken = sorted(
+        (_clean(nodes[key].get("name")), rows[key][1]) for key in rewritten if shared[rows[key]] > 1
+    )
+    if taken:
+        listed = ", ".join(f"{name!r} as {written!r}" for name, written in taken[:10])
+        raise ExportError(
+            f"{len(taken)} elementary flow(s) would be written under a name that another "
+            f"flow of the same compartment has, once their letters are spelled out for a "
+            f"SimaPro CSV file: {listed}. The file could not be mapped back to the database."
+        )
     return {
         key: row if shared[row] == 1 else (row[0], f"{row[1]} | {key[1]}", row[2])
         for key, row in rows.items()
@@ -894,12 +916,43 @@ def read_openlca(path):
         }
 
 
-def check_openlca(path, nodes, namespace, marks, unit_labels=None, differences=()):
+def flow_directions(nodes, labels):
+    """`(resources, undeclared)`: the elementary flows in use that are taken from nature,
+    and those whose compartment no table names.
+
+    An exchange with a resource is an input of its dataset; an exchange with any other
+    elementary flow is an output. The rule is the declared one of the SimaPro sections
+    (`[[compartment]]` in the table of labels): a flow whose section is "Resources". For a
+    flow of an undeclared compartment the rule says nothing, and its direction is not
+    compared; the SimaPro export stops on such a flow and names it.
+    """
+    resources, undeclared = set(), set()
+    for key in used_flows(nodes):
+        categories = tuple(str(c) for c in nodes[key].get("categories") or ())
+        section, _ = simapro_section(categories, labels)
+        if section is None:
+            undeclared.add(key)
+        elif section == "Resources":
+            resources.add(key)
+    return resources, undeclared
+
+
+def resource_flows(nodes, labels):
+    """The elementary flows in use that are taken from nature (see `flow_directions`)."""
+    return flow_directions(nodes, labels)[0]
+
+
+def check_openlca(
+    path, nodes, namespace, marks, unit_labels=None, differences=(), resources=None, undeclared=()
+):
     """Problems found when the JSON-LD archive is read back and compared with the database.
 
     The archive holds a flow for every activity and for every elementary flow in use.
     `differences` are the exchanges whose declared unit is another quantity than their
-    supplier's: each must say so in its description.
+    supplier's: each must say so in its description. `resources` are the elementary flows
+    taken from nature (`flow_directions`): with them the direction of every elementary
+    exchange is compared too, an input for a resource and an output for anything else.
+    `undeclared` are the flows that rule says nothing about; they are left out of it.
     """
     import olca_schema as o
 
@@ -919,6 +972,8 @@ def check_openlca(path, nodes, namespace, marks, unit_labels=None, differences=(
     if len(flows) != len(written_nodes):
         problems.append(f"{len(flows)} flows instead of {len(written_nodes)}")
     noted = {(row["key"], flow_id((row["key"][0], row["supplier"]))) for row in differences}
+    taken = None if resources is None else {flow_id(key) for key in resources}
+    unruled = {flow_id(key) for key in undeclared}
     for key, node in written_nodes.items():
         flow = flows.get(flow_id(key))
         if flow is None:
@@ -957,7 +1012,7 @@ def check_openlca(path, nodes, namespace, marks, unit_labels=None, differences=(
             if exchange["type"] == "technosphere" and not is_elementary(nodes[target]):
                 provider = process_id(target)
             expected[(flow_id(target), unit(nodes[target]), provider, exchange["amount"])] += 1
-        written = Counter()
+        written, turned = Counter(), 0
         for exchange in process.exchanges:
             refs = (
                 exchange.flow.id in flows,
@@ -980,8 +1035,22 @@ def check_openlca(path, nodes, namespace, marks, unit_labels=None, differences=(
                 exchange.description or ""
             ):
                 problems.append(f"{key}: an exchange lacks the note of its declared unit")
+            flow = flows.get(exchange.flow.id)
+            if (
+                taken is not None
+                and flow is not None
+                and flow.flow_type == o.FlowType.ELEMENTARY_FLOW
+                and exchange.flow.id not in unruled
+                and bool(exchange.is_input) != (exchange.flow.id in taken)
+            ):
+                turned += 1
         if _amounts(written) != _amounts(expected):
             problems.append(f"{key}: exchanges differ from the database")
+        if turned:
+            problems.append(
+                f"{key}: {turned} elementary exchange(s) in the wrong direction "
+                "(an emission written as an input, or a resource as an output)"
+            )
     return problems
 
 
@@ -1128,10 +1197,68 @@ def check_ilcd(path, activities, marks):
     return problems
 
 
+def hold_back(formats, checks, files, out):
+    """Set aside the files of the formats in `HELD_BACK`: `{kind: reason}` for those held.
+
+    A held-back format was written and read back like any other. What its read-back found
+    is kept in `checks`; its status becomes "held back" instead of "failed", and its file
+    moves into `HELD_FOLDER`, so that it is not among the files a build keeps. A format
+    that was not written, or that failed before its read-back, stays failed.
+    """
+    held = {}
+    for kind, reason in HELD_BACK.items():
+        entry = formats.get(kind)
+        if entry is None or not files[kind].is_file():
+            continue
+        if entry["status"] == "failed" and entry.get("stage") != "read back":
+            continue
+        problems = checks.get(kind, [])
+        if not problems and DEPTH.get(kind, "compared") == "compared":
+            error = (
+                "is listed as held back, but its read-back compares every exchange and "
+                "finds no difference: take it off HELD_BACK in scripts/export_release.py"
+            )
+            formats[kind] |= {"status": "failed", "stage": "held back", "error": error}
+            checks[kind] = [error]
+            continue
+        found = (
+            f"{len(problems)} difference(s) from the database"
+            if problems
+            else "counted, not compared with the database"
+        )
+        formats[kind] |= {"status": "held back", "stage": "read back", "error": found}
+        folder = out / HELD_FOLDER
+        folder.mkdir(exist_ok=True)
+        files[kind] = files[kind].rename(folder / files[kind].name)
+        held[kind] = reason
+    return held
+
+
 # --- The step ----------------------------------------------------------------------
 
 FAILED = object()
 FORMATS = ("brightway", "openlca", "ilcd", "simapro")
+#: Formats that every build writes and reads back, and that are not kept under a tag: each
+#: with the reason. A format stands here while its read-back finds a known defect of its
+#: writer, or compares too little to say that the file is the database. Its file is set
+#: aside in `HELD_FOLDER`, is not among the files of the manifest, and its differences do
+#: not fail the step. A format that stands here although its read-back compares every
+#: exchange and finds no difference fails the step: take it off this list.
+HELD_BACK = {
+    "openlca": (
+        "The writer marks every elementary exchange as an input, emissions included. The "
+        "read-back compares the direction of each elementary exchange and finds them."
+    ),
+    "ilcd": (
+        "The read-back only counts the datasets and searches for the credit. No exchange is "
+        "compared, and the writer takes the direction of an exchange from the sign of its "
+        "amount."
+    ),
+}
+HELD_FOLDER = "held-back"
+#: How much a read-back compares: "compared" (every dataset and exchange with the
+#: database) unless it is named here.
+DEPTH = {"ilcd": "counted"}
 #: The fifth format, written only when the files of the patch run are given.
 ECOSPOLD = "ecospold1"
 #: The files that travel inside the ecoSpold v1 archive, beside the datasets.
@@ -1381,7 +1508,13 @@ def export_release(
             read_back(
                 "openlca",
                 lambda: check_openlca(
-                    files["openlca"], nodes, namespace, marks, openlca_labels, other_quantity
+                    files["openlca"],
+                    nodes,
+                    namespace,
+                    marks,
+                    openlca_labels,
+                    other_quantity,
+                    *flow_directions(nodes, labels),
                 ),
             )
             read_back("ilcd", lambda: check_ilcd(files["ilcd"], len(activities), marks))
@@ -1439,6 +1572,7 @@ def export_release(
         if stats[ECOSPOLD] is not FAILED:
             read_back(ECOSPOLD, lambda: ecospold_export.check(files[ECOSPOLD], ecospold, **packed))
 
+    held = hold_back(formats, checks, files, out)
     pairs = Counter(
         f"{row['declared_unit']} for a {'flow' if row['kind'] == 'biosphere' else 'dataset'} "
         f"in {row['supplier_unit']}"
@@ -1452,7 +1586,7 @@ def export_release(
     manifest = {
         "schema": SCHEMA,
         "status": "completed"
-        if all(entry["status"] == "completed" for entry in formats.values())
+        if all(entry["status"] in ("completed", "held back") for entry in formats.values())
         else "failed",
         **{k: provenance[k] for k in ("label", "provider", "release", "credit", "statement")},
         "contribution": provenance["contribution"],
@@ -1528,13 +1662,24 @@ def export_release(
         "files": {
             kind: {"name": path.name, "bytes": path.stat().st_size, "sha256": sha256(path)}
             for kind, path in files.items()
-            if path.is_file()
+            if path.is_file() and kind not in held
+        },
+        "held_back": {
+            kind: {
+                "reason": reason,
+                "name": files[kind].name,
+                "bytes": files[kind].stat().st_size,
+                "sha256": sha256(files[kind]),
+                "differences": len(checks.get(kind, ())),
+            }
+            for kind, reason in held.items()
         },
         "checks": {
             kind: {
                 "passed": not checks.get(kind, ["not checked"]),
                 "problems": checks.get(kind, ["not checked"])[:50],
                 "total": len(checks.get(kind, ["not checked"])),
+                "depth": DEPTH.get(kind, "compared"),
             }
             for kind in kinds
         },
@@ -1542,7 +1687,11 @@ def export_release(
     (out / "manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-    sums = [f"{sha256(p)}  {p.name}" for p in sorted(out.iterdir()) if p.name != "SHA256SUMS"]
+    sums = [
+        f"{sha256(p)}  {p.name}"
+        for p in sorted(out.iterdir())
+        if p.is_file() and p.name != "SHA256SUMS"
+    ]
     (out / "SHA256SUMS").write_text("\n".join(sums) + "\n", encoding="utf-8")
     return manifest
 
@@ -1632,7 +1781,9 @@ def main(argv=None):
         sys.exit(f"Not exported: {error}")
     for kind, check in manifest["checks"].items():
         entry = manifest["formats"][kind]
-        if check["passed"]:
+        if entry["status"] == "held back":
+            print(f"{kind}: HELD BACK, not among the files ({entry['error']})")
+        elif check["passed"]:
             print(f"{kind}: read back and matches")
         elif entry.get("stage") == "write":
             print(f"{kind}: NOT WRITTEN ({entry['error']})")

@@ -20,6 +20,7 @@ import sys
 import tempfile
 import types
 import unittest
+import urllib.parse
 import zipfile
 from html.parser import HTMLParser
 from pathlib import Path
@@ -128,6 +129,8 @@ def an_archive(**files):
 class GitHubAnswers:
     """Recorded answers of the API. Every request is kept, with its headers."""
 
+    default_branch = "main"
+
     def __init__(self, runs, jobs=None, artifacts=None, location=STORAGE, no_workflow=False, releases=()):
         self.runs, self.jobs = runs, jobs or some_jobs()
         self.artifacts = [{"id": 7, "name": "release-build-results", "expired": False, "size_in_bytes": 4000,
@@ -138,10 +141,16 @@ class GitHubAnswers:
     def __call__(self, method, url, headers, body):
         self.requests.append((method, url, dict(headers)))
         path = url.split(f"/repos/{REPOSITORY}", 1)[1]
+        if path == "":
+            return 200, {}, json.dumps({"default_branch": self.default_branch}).encode()
         if path.startswith("/actions/workflows/"):
             if self.no_workflow:
                 return 404, {}, b'{"message": "Not Found"}'
-            return 200, {}, json.dumps({"workflow_runs": self.runs}).encode()
+            # As GitHub answers: with `branch=`, only the runs of that branch (or tag).
+            query = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)
+            runs = [run for run in self.runs
+                    if "branch" not in query or run["head_branch"] == query["branch"][0]]
+            return 200, {}, json.dumps({"workflow_runs": runs}).encode()
         if path.endswith("/jobs?per_page=100"):
             return 200, {}, json.dumps(self.jobs).encode()
         if path.endswith("/artifacts?per_page=100"):
@@ -185,6 +194,28 @@ class ReadingTests(unittest.TestCase):
         # one job with its steps as GitHub recorded them, and nobody is named
         self.assertEqual([s["conclusion"] for s in record["jobs"][0]["steps"]], ["success", "failure", "success", "success"])
         self.assertNotIn("somebody", json.dumps(record))
+
+    def test_the_last_build_is_a_run_of_the_default_branch(self):
+        """A run someone started on a branch that is not merged is not the last build of the
+        repository, however new it is."""
+        answers = GitHubAnswers([
+            a_run(9, event="workflow_dispatch", branch="build/a-trial"),
+            a_run(8, event="workflow_dispatch"),
+            a_run(7),
+        ])
+        record, _ = read(answers, an_archive(**{"run.json": an_account()}))
+        self.assertEqual((record["run"]["number"], record["run"]["branch"]), (8, "main"))
+        listed = next(url for _, url, _ in answers.requests if "/actions/workflows/" in url)
+        self.assertIn("runs?branch=main&per_page=20", listed)
+        # A default branch with another name, as a fork has: its name is asked for and quoted.
+        answers = GitHubAnswers([a_run(9, branch="build/a-trial"), a_run(8, branch="eaternity/integration")])
+        answers.default_branch = "eaternity/integration"
+        record, _ = read(answers, an_archive(**{"run.json": an_account()}))
+        self.assertEqual(record["run"]["number"], 8)
+        self.assertTrue(any("branch=eaternity%2Fintegration&" in url for _, url, _ in answers.requests))
+        # Only runs of other branches: there is no last build to show.
+        record, _ = read(GitHubAnswers([a_run(9, branch="build/a-trial")]), an_archive(**{"run.json": an_account()}))
+        self.assertEqual(record["state"], "no run")
 
     def test_the_token_goes_to_the_api_and_never_to_where_an_artifact_is_stored(self):
         answers = GitHubAnswers([a_run(7)])

@@ -92,6 +92,7 @@ def _assemble_from_root(
         locations={
             code: entry.target_location for code, entry in bridge.items() if entry.target_location
         },
+        in_mapping=frozenset(bridge),
     )
     result = build(
         inventory=inventory,
