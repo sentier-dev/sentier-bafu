@@ -136,6 +136,25 @@ class FromManifest(unittest.TestCase):
             run_summary.from_manifest(unnamed, NAMES)["contents"][0].startswith(run_summary.UNNAMED)
         )
 
+    def test_a_failed_step_that_is_for_information_is_said_and_the_account_says_completed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            steps = write_run(Path(tmp))
+            aside = {"name": "world factors build", "status": "failed", "seconds": 3.0}
+            steps.insert(1, aside | {"peak_memory_mb": 10.0, "reason": "no space left"})
+            manifest = release_manifest.manifest(Path(tmp), tag=None, steps=steps)
+        account = run_summary.from_manifest(manifest, NAMES)
+        self.assertEqual(account["status"], "completed")
+        step = next(s for s in account["steps"] if s["name"] == "world factors build")
+        self.assertEqual((step["status"], step["reason"]), ("failed", "no space left"))
+        said = [text for text in account["remarks"] if "for information only" in text]
+        self.assertEqual(len(said), 1)
+        self.assertTrue(said[0].startswith('The step "world factors build" failed.'))
+        # a run in which it completed says nothing about it
+        self.assertFalse(
+            [t for t in run_summary.from_manifest(a_manifest(), NAMES)["remarks"]
+             if "for information only" in t]
+        )  # fmt: skip
+
     def test_a_step_that_failed_carries_its_reason_and_the_account_says_failed(self):
         account = run_summary.from_manifest(a_manifest(failed="patched build"), NAMES)
         self.assertEqual(account["status"], "failed")

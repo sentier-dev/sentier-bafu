@@ -22,7 +22,7 @@ folder, which holds BAFU's inventory and stays local.
 | Step | What it does | It fails when |
 |---|---|---|
 | provider build | BAFU's release as it is: adapter, importer, Brightway database `bafu-2026` with the EF 3.1 methods, audit | a step of the build stops, or the audit has an error. Findings on BAFU's own release are reported and do not fail |
-| world factors build | BAFU's release once more (`build --no-patches --skip-located`): every elementary flow on its world-wide factor, also one that names a country. The state before the countries' factors | as the provider build |
+| world factors build | BAFU's release once more (`build --no-patches --skip-located`): every elementary flow on its world-wide factor, also one that names a country. The state before the countries' factors. For information only: nothing that is kept depends on it. If it fails, the run says so, the comparison is made without that state, and the run is judged without it (`FOR_INFORMATION` in `release_manifest.py`) | as the provider build |
 | patched build | import fixes and community patches, then the same; database `bafu-2026-v1-patched`, marked Modified Data | a patch stops, the result is not valid EcoSpold 1, the audit has an error or a finding |
 | written files | every written file against the EcoSpold 1 schema, and the file set against the run summary | a file is invalid, or the files are not the ones the summary describes |
 | patch run | the table of the patch run, and what each patch matched now and in the previous tagged build | the release is not a known one, a step stopped, or a patch changes nothing |

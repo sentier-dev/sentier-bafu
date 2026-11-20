@@ -555,6 +555,22 @@ class WholeManifest(Folder):
         self.assertEqual(data["brightway"]["patched"]["database"], "bafu-2026-v1-patched")
         self.assertEqual([p["id"] for p in data["patches"]], ["0001-amount", "0002-nothing-here"])
 
+    def test_a_step_that_is_for_information_does_not_fail_the_run(self):
+        """The comparison is the gate. The build with the world's factors adds a state to the
+        chain beside it; when it fails, the run is judged without it."""
+        self.assertIn("world factors build", rm.FOR_INFORMATION)
+        steps = write_run(self.out)
+        aside = {"name": "world factors build", "status": "failed", "seconds": 3.0}
+        steps.insert(1, aside | {"peak_memory_mb": 10.0, "reason": "no space left on device"})
+        data = rm.manifest(self.out, tag="patched-2026-v1.1", steps=steps)
+        self.assertEqual(rm.shape_errors(data), [])
+        self.assertEqual((data["status"], data["problems"]), ("completed", []))
+        self.assertEqual(rm.release_errors(data), [])
+        self.assertEqual(data["steps"][1]["status"], "failed")  # and it is still said
+        # any other step that fails still fails the run
+        steps[2] |= {"status": "failed", "reason": "audit failed"}
+        self.assertEqual(rm.manifest(self.out, tag=None, steps=steps)["status"], "failed")
+
     def test_a_failed_step_fails_the_manifest_and_blocks_the_release(self):
         steps = write_run(self.out)
         steps[4] |= {"status": "failed", "reason": "2 changed row(s) no step explains"}
