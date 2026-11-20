@@ -372,8 +372,21 @@ def exports_section(folder: Path) -> dict | None:
             kind: {key: entry.get(key) for key in ("status", "stage", "error")}
             for kind, entry in export["formats"].items()
         },
-        "read_back_matches": {kind: check["passed"] for kind, check in export["checks"].items()},
+        # true or false where the file was compared with the database, exchange by exchange;
+        # "counted" where its datasets were only counted and searched for the credit.
+        "read_back_matches": {
+            kind: "counted"
+            if check["passed"] and check.get("depth") == "counted"
+            else check["passed"]
+            for kind, check in export["checks"].items()
+        },
         "differences_found": {kind: check["total"] for kind, check in export["checks"].items()},
+        # Formats that were written and read back and are not among the files: why, and how
+        # many differences the read-back found.
+        "held_back": {
+            kind: {"reason": entry["reason"], "differences": entry["differences"]}
+            for kind, entry in (export.get("held_back") or {}).items()
+        },
         "files": [
             {"kind": kind, **{key: entry[key] for key in ("name", "bytes", "sha256")}}
             for kind, entry in export["files"].items()
@@ -726,6 +739,7 @@ def _check_exports(shape: _Shape, exports, where: str) -> None:
         "formats",
         "read_back_matches",
         "differences_found",
+        "held_back",
         "files",
         "counts",
         "published",
@@ -758,10 +772,21 @@ def _check_exports(shape: _Shape, exports, where: str) -> None:
         for kind, value in table.items():
             shape.text(kind, f"{where}.{key}", 60)
             if key == "read_back_matches":
-                if not isinstance(value, bool):
-                    shape.fail(f"{where}.{key}.{kind}", "not true or false")
+                if not isinstance(value, bool) and value != "counted":
+                    shape.fail(f"{where}.{key}.{kind}", 'not true, false or "counted"')
             else:
                 shape.count(value, f"{where}.{key}.{kind}")
+    held = exports["held_back"]
+    if not isinstance(held, dict) or len(held) > 10:
+        shape.fail(f"{where}.held_back", "not a short table")
+        held = {}
+    for kind, entry in held.items():
+        shape.text(kind, f"{where}.held_back", 40)
+        if shape.keys(entry, f"{where}.held_back.{kind}", ("reason", "differences")):
+            shape.text(entry["reason"], f"{where}.held_back.{kind}.reason", 600)
+            shape.count(entry["differences"], f"{where}.held_back.{kind}.differences")
+        if isinstance(formats, dict) and (formats.get(kind) or {}).get("status") != "held back":
+            shape.fail(f"{where}.held_back.{kind}", "held back, and its format does not say so")
     files = exports["files"]
     if not isinstance(files, list) or len(files) > 20:
         shape.fail(f"{where}.files", "not a short list")
@@ -774,6 +799,8 @@ def _check_exports(shape: _Shape, exports, where: str) -> None:
                 shape.fail(f"{where}.files.name", "a file name, not a path")
             shape.count(entry["bytes"], f"{where}.files.bytes")
             shape.sha(entry["sha256"], f"{where}.files.sha256")
+            if entry["kind"] in held:
+                shape.fail(f"{where}.files", f"{entry['kind']} is held back and listed as a file")
 
 
 def _check_declared_units(shape: _Shape, declared, where: str) -> None:
@@ -1041,6 +1068,12 @@ def notes(
             f"| {entry['name']} | {entry['bytes']:,} | `{entry['sha256']}` |"
             for entry in exports["files"]
         ]
+        for kind, entry in sorted(exports["held_back"].items()):
+            lines += [
+                "",
+                f"Not among these files: the {kind} export. It was written and read back, and "
+                f"is held back. {entry['reason']}",
+            ]
     for entry in data["contributions"]:
         lines += [
             "",

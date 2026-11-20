@@ -58,7 +58,7 @@ The steps, from the files that an LCA tool can open back to BAFU's files:
 
 | Step | What happens | State |
 |---|---|---|
-| 7. Exports | Files for Brightway, openLCA, ILCD and SimaPro are written, and the patched copy again as ecoSpold v1, with BAFU's credit, the label *Modified Data* and the list of changes. Each file is read back. | Works on your own machine and in the checks of this repository. A tagged build keeps the files, and this page offers them after asking you to accept BAFU's terms. |
+| 7. Exports | Files for Brightway, openLCA, ILCD and SimaPro are written, and the patched copy again as ecoSpold v1, with BAFU's credit, the label *Modified Data* and the list of changes. Each file is read back. | Works for Brightway, SimaPro and ecoSpold v1, on your own machine and in the checks of this repository. The openLCA and ILCD files are written and held back: the openLCA file marks emissions as inputs, and the ILCD file is only counted, not compared. A tagged build keeps the other files, and this page asks you to accept BAFU's terms before it links one. |
 | 6. Checks | Each database is checked: the datasets and exchanges are counted, every input must be linked to its supplier, and every score is computed. The two databases are then compared, and each difference is traced to an import fix or a patch. | Works |
 | 5. Brightway database | Two Brightway databases are built, with the EF 3.1 impact methods: one of BAFU's release and one of the patched copy. | Works |
 | 4. Elementary flows | BAFU's elementary flows are linked to the flows that the impact methods use. The Brightway build does this with the Sentier mappings. Patch 0010 does it with links to Brightway Flows. | Two ways exist. They do not agree yet. |

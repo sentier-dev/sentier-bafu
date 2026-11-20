@@ -28,6 +28,9 @@ INVENTORY, FLOWS = synthetic.INVENTORY, synthetic.FLOWS
 
 
 def path(folder, manifest, kind):
+    """Where a format's file is: among the files, or set aside when the format is held back."""
+    if kind in manifest.get("held_back", {}):
+        return folder / step.HELD_FOLDER / manifest["held_back"][kind]["name"]
     return folder / manifest["files"][kind]["name"]
 
 
@@ -41,13 +44,31 @@ def close(a, b):
 # --- Written, read back, the same ----------------------------------------------------
 
 
+TURNED = "elementary exchange(s) in the wrong direction"
+
+
+def fine(manifest, kind):
+    """Whether a format came out as it should: completed and read back without a
+    difference, or, for a format on the list of those held back, held back for the
+    reason on that list and for nothing else."""
+    entry, check = manifest["formats"][kind], manifest["checks"][kind]
+    if kind not in step.HELD_BACK:
+        return entry["status"] == "completed" and check["passed"]
+    return entry["status"] == "held back" and all(TURNED in problem for problem in check["problems"])
+
+
 def test_every_export_reads_back_and_matches_the_database(base):
     manifest, out, _ = base
-    assert {kind: check["problems"] for kind, check in manifest["checks"].items()} == {
-        "brightway": [],
-        "openlca": [],
-        "ilcd": [],
-        "simapro": [],
+    problems = {kind: check["problems"] for kind, check in manifest["checks"].items()}
+    assert problems["brightway"] == problems["simapro"] == problems["ilcd"] == []
+    # The JSON-LD writer marks every elementary exchange as an input. The read-back finds
+    # it in each dataset that emits something, and finds nothing else.
+    assert problems["openlca"] and all(TURNED in problem for problem in problems["openlca"])
+    assert {kind: check["depth"] for kind, check in manifest["checks"].items()} == {
+        "brightway": "compared",
+        "openlca": "compared",
+        "ilcd": "counted",
+        "simapro": "compared",
     }
     assert manifest["status"] == "completed"
     assert manifest["counts"] == {
@@ -60,11 +81,51 @@ def test_every_export_reads_back_and_matches_the_database(base):
     assert manifest["simapro"]["links"] == {"resolved": 15, "ambiguous": 0, "missing": 0}
     assert {kind: entry["status"] for kind, entry in manifest["formats"].items()} == {
         "brightway": "completed",
-        "openlca": "completed",
-        "ilcd": "completed",
+        "openlca": "held back",
+        "ilcd": "held back",
         "simapro": "completed",
     }
     assert set(manifest["formats"]["simapro"]["seconds"]) == {"write", "read back"}
+
+
+def test_a_held_back_format_is_written_read_back_and_set_aside(base):
+    manifest, out, _ = base
+    assert set(manifest["held_back"]) == set(step.HELD_BACK) == {"openlca", "ilcd"}
+    for kind, entry in manifest["held_back"].items():
+        assert entry["reason"] == step.HELD_BACK[kind]
+        assert kind not in manifest["files"], "a held-back file is not among the files"
+        file = out / step.HELD_FOLDER / entry["name"]
+        assert file.is_file() and not (out / entry["name"]).exists()
+        assert (step.sha256(file), file.stat().st_size) == (entry["sha256"], entry["bytes"])
+        assert entry["name"] not in (out / "SHA256SUMS").read_text()
+    # What the read-back found stays on record: differences for one, a count only for the other.
+    assert manifest["held_back"]["openlca"]["differences"] == manifest["checks"]["openlca"]["total"] > 0
+    assert manifest["formats"]["openlca"]["error"].endswith("difference(s) from the database")
+    assert manifest["held_back"]["ilcd"]["differences"] == 0
+    assert manifest["formats"]["ilcd"]["error"] == "counted, not compared with the database"
+
+
+def test_a_format_held_back_without_a_reason_left_fails_the_step(tmp_path):
+    """The list is strict: a format whose read-back compares every exchange and finds
+    nothing is not held back any longer, and the step says so instead of going on."""
+    files = {"openlca": tmp_path / "a-openlca.zip", "ilcd": tmp_path / "a-ilcd.zip"}
+    for file in files.values():
+        file.write_text("x")
+    formats = {kind: {"status": "completed", "seconds": {}} for kind in files}
+    checks = {"openlca": [], "ilcd": []}
+    held = step.hold_back(formats, checks, files, tmp_path)
+    # openLCA is compared exchange by exchange: no difference left, so no reason to hold it.
+    assert (formats["openlca"]["status"], formats["openlca"]["stage"]) == ("failed", "held back")
+    assert "take it off HELD_BACK" in formats["openlca"]["error"] and checks["openlca"]
+    assert files["openlca"].parent == tmp_path, "it stays where it was"
+    # ILCD is only counted: it stays held back however clean the count is.
+    assert held == {"ilcd": step.HELD_BACK["ilcd"]}
+    assert files["ilcd"].parent.name == step.HELD_FOLDER
+    # A format that failed before its read-back is a failure, held back or not.
+    formats = {"openlca": {"status": "failed", "stage": "write", "error": "no unit"}}
+    files["openlca"].write_text("x")
+    assert step.hold_back(formats, {"openlca": ["write stopped"]}, files, tmp_path) == {}
+    assert formats["openlca"]["status"] == "failed"
 
 
 def test_manifest_holds_release_credit_label_tools_and_checksums(base):
@@ -81,7 +142,9 @@ def test_manifest_holds_release_credit_label_tools_and_checksums(base):
         assert step.sha256(out / entry["name"]) == entry["sha256"]
         assert (out / entry["name"]).stat().st_size == entry["bytes"]
     listed = dict(line.split("  ")[::-1] for line in (out / "SHA256SUMS").read_text().splitlines())
-    assert listed == {p.name: step.sha256(p) for p in out.iterdir() if p.name != "SHA256SUMS"}
+    assert listed == {
+        p.name: step.sha256(p) for p in out.iterdir() if p.is_file() and p.name != "SHA256SUMS"
+    }
 
 
 def test_record_of_modifications_travels_with_the_files(base):
@@ -199,7 +262,7 @@ def contribution(tmp_path_factory):
 def test_a_contributions_export_says_whose_database_it_is(contribution):
     manifest, out = contribution
     assert manifest["status"] == "completed"
-    assert all(check["passed"] for check in manifest["checks"].values())
+    assert all(fine(manifest, kind) for kind in manifest["checks"])
     statement = manifest["statement"]
     assert (
         "This is the database synthetic-v1-c900-other-flour of contribution C900 "
@@ -599,7 +662,9 @@ def test_unit_without_a_label_fails_the_openlca_formats_and_leaves_the_others(tm
     # The Brightway package and the SimaPro file are written and read back all the same.
     for kind in ("brightway", "simapro"):
         assert manifest["formats"][kind]["status"] == "completed"
-        assert manifest["checks"][kind] == {"passed": True, "problems": [], "total": 0}
+        assert manifest["checks"][kind] == {
+            "passed": True, "problems": [], "total": 0, "depth": "compared"
+        }  # fmt: skip
         assert (out / manifest["files"][kind]["name"]).is_file()
 
 
@@ -881,8 +946,7 @@ def test_compartment_that_no_table_names_fails_simapro_and_leaves_the_others(tmp
     )
     assert not list(out.glob("*.csv"))
     for kind in ("brightway", "openlca", "ilcd"):
-        assert manifest["formats"][kind]["status"] == "completed"
-        assert manifest["checks"][kind]["passed"]
+        assert fine(manifest, kind), kind
 
 
 # --- An activity with a second product -----------------------------------------------------
@@ -899,10 +963,9 @@ def test_co_product_is_refused_by_simapro_linked_naming_and_the_other_formats_co
     assert manifest["checks"]["simapro"]["problems"][0].startswith("write stopped: ValueError")
     assert "simapro" not in manifest["files"] and not list(out.glob("*.csv"))
     for kind in ("brightway", "openlca", "ilcd"):
-        assert manifest["formats"][kind]["status"] == "completed"
-        assert manifest["checks"][kind]["passed"]
+        assert fine(manifest, kind), kind
     listed = {line.split("  ")[1] for line in (out / "SHA256SUMS").read_text().splitlines()}
-    assert listed == {p.name for p in out.iterdir()} - {"SHA256SUMS"}
+    assert listed == {p.name for p in out.iterdir() if p.is_file()} - {"SHA256SUMS"}
 
 
 def test_co_product_is_written_as_an_allocated_output_not_as_a_credit(tmp_path):
@@ -985,6 +1048,39 @@ def test_elementary_flows_get_minted_ids_and_brightway_names_today(base):
     }
 
 
+def test_the_read_back_compares_the_direction_of_every_elementary_exchange(base):
+    """The build's counterpart of the expected failure below: as long as the writer marks
+    an emission as an input, the read-back says so, dataset by dataset."""
+    manifest, out, databases = base
+    nodes, marks = step.all_nodes(databases), (CREDIT, "Modified Data")
+    labels = step.load_labels()
+    resources = step.resource_flows(nodes, labels)
+    assert resources == {
+        key for key, node in databases[FLOWS]["data"].items() if node["type"] == "natural resource"
+    }  # fmt: skip
+    file = path(out, manifest, "openlca")
+    found = step.check_openlca(file, nodes, step.NAMESPACE, marks, resources=resources)
+    emitting = {
+        key
+        for key, node in nodes.items()
+        if not step.is_elementary(node)
+        and any(
+            step.is_elementary(nodes[tuple(e["input"])]) and tuple(e["input"]) not in resources
+            for e in node.get("exchanges", ())
+        )
+    }
+    assert sorted(found) == sorted(
+        problem for problem in manifest["checks"]["openlca"]["problems"]
+    ) and len(found) == len(emitting)
+    assert all(TURNED in problem for problem in found)
+    # Without the set of resources the direction is not compared: the older behaviour.
+    assert step.check_openlca(file, nodes, step.NAMESPACE, marks) == []
+    # Every flow called a resource is one the writer got right, so the check can pass:
+    # with all flows declared as resources, an input is what each should be.
+    everything = {key for key, node in nodes.items() if step.is_elementary(node)}
+    assert step.check_openlca(file, nodes, step.NAMESPACE, marks, resources=everything) == []
+
+
 @pytest.mark.xfail(strict=True, reason="JSON-LD writer: every elementary exchange is an input")
 def test_openlca_emissions_are_outputs_and_resources_inputs(base):
     manifest, out, databases = base
@@ -1025,17 +1121,22 @@ def _arguments(tmp_path, *more):
 def test_command_writes_the_exports_and_reports_the_read_back(tmp_path, capsys):
     step.main(_arguments(tmp_path, "--source-sha256", "cd" * 32, "--name", "demo"))
     output = capsys.readouterr().out
-    assert "openlca: read back and matches" in output
+    assert "openlca: HELD BACK, not among the files (" in output
+    assert "ilcd: HELD BACK, not among the files (counted, not compared with the database)" in output
     assert "simapro: read back and matches" in output
     assert sorted(p.name for p in (tmp_path / "out").iterdir()) == [
         "MODIFICATIONS.json",
         "MODIFICATIONS.md",
         "SHA256SUMS",
-        "demo-ilcd.zip",
-        "demo-openlca.zip",
         "demo-simapro.csv",
         "demo.bw2package",
+        "held-back",
         "manifest.json",
+    ]
+    # The two formats that are held back are set aside, not among the files of the build.
+    assert sorted(p.name for p in (tmp_path / "out" / step.HELD_FOLDER).iterdir()) == [
+        "demo-ilcd.zip",
+        "demo-openlca.zip",
     ]
     manifest = json.loads((tmp_path / "out/manifest.json").read_text())
     assert manifest["source"]["sha256"] == "cd" * 32
@@ -1160,7 +1261,9 @@ def test_the_patched_files_are_packed_as_ecospold_v1_and_read_back(ecospold):
     assert manifest["status"] == "completed"
     assert manifest["formats"]["ecospold1"]["status"] == "completed"
     assert set(manifest["formats"]["ecospold1"]["seconds"]) == {"write", "read back"}
-    assert manifest["checks"]["ecospold1"] == {"passed": True, "problems": [], "total": 0}
+    assert manifest["checks"]["ecospold1"] == {
+        "passed": True, "problems": [], "total": 0, "depth": "compared"
+    }  # fmt: skip
     assert list(manifest["formats"]) == ["brightway", "openlca", "ilcd", "simapro", "ecospold1"]
     archive = path(out, manifest, "ecospold1")
     assert archive.name == "synthetic-2026-v1-patched-ecospold1.zip"
@@ -1222,7 +1325,7 @@ def test_files_that_are_not_the_ones_of_the_patch_run_fail_ecospold_and_leave_th
     assert not manifest["checks"]["ecospold1"]["passed"]
     assert "ecospold1" not in manifest["files"] and not list(out.glob("*ecospold*"))
     for kind in ("brightway", "openlca", "ilcd", "simapro"):
-        assert manifest["formats"][kind]["status"] == "completed"
+        assert fine(manifest, kind), kind
 
 
 def test_an_ecospold_archive_without_the_label_is_found_out(tmp_path, monkeypatch):

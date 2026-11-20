@@ -50,16 +50,41 @@ anything:
 - exchanges that point at a database you did not name (the writers would drop the rows).
 
 A build with a tag keeps the export files under its tag on GitHub, beside its manifest, with
-BAFU's terms at the top of the tag's notes. The site offers each file only after asking the
-reader to accept those terms. A build without a tag keeps no export file.
+BAFU's terms at the top of the tag's notes. The site asks the reader to accept those terms
+before it links a file. That question is a notice in the page, not a gate: the tag's page on
+GitHub lists the same files, and each downloads there, or by its address, without a question.
+A build without a tag keeps no export file. A format that is held back (`HELD_BACK` in
+`scripts/export_release.py`: today openLCA and ILCD, see below) is written and read back in
+every build and is not among the files a tag keeps.
+
+## Formats that are held back
+
+Two formats are written and read back in every build and are not among its files: openLCA
+and ILCD (`HELD_BACK` in `scripts/export_release.py`, each with its reason). Their files are
+set aside in `held-back/`, the manifest lists them under `held_back` and not under `files`,
+and a tag does not keep them.
+
+- **openLCA.** The read-back compares the direction of every elementary exchange: an input
+  for a flow taken from nature (a flow whose declared section is "Resources"), an output for
+  every other. The writer marks every elementary exchange as an input, emissions too, so the
+  read-back finds a difference in every dataset that emits something. The file is the
+  database in every other respect the read-back compares.
+- **ILCD.** The read-back counts the datasets and searches each for the credit and the label.
+  It compares no exchange, so the manifest says `"counted"` for it, never `true`. Its writer
+  takes the direction of an exchange from the sign of its amount.
+
+The list is strict. A format on it whose read-back compares every exchange and finds no
+difference fails the step, with the words to take it off the list. So when the writers are
+corrected and their pinned version moves, the build says so. A format that is held back
+fails no run by its differences: it is not offered.
 
 ## What it writes
 
 | File | For | Read with |
 |---|---|---|
 | `<name>.bw2package` | Brightway | `bw2io.BW2Package.import_file(path)` |
-| `<name>-openlca.zip` | openLCA | its JSON-LD import |
-| `<name>-ilcd.zip` | ILCD readers | written by the same call; counted, not compared |
+| `held-back/<name>-openlca.zip` | openLCA | its JSON-LD import. Held back: see below |
+| `held-back/<name>-ilcd.zip` | ILCD readers | written by the same call; counted, not compared. Held back |
 | `<name>-simapro.csv` | SimaPro | its CSV import |
 | `<name>-ecospold1.zip` | readers of ecoSpold v1, BAFU's own format | an EcoSpold 1 import; `bafu-fixes` reads the files too |
 | `MODIFICATIONS.md`, `MODIFICATIONS.json` | everyone | the record of modifications |
@@ -184,8 +209,8 @@ datasets, 420,063 exchanges, 1,927 elementary flows in use):
 | File | Size | Read back |
 |---|---:|---|
 | `bafu-2026-v1-patched.bw2package` | 16.1 MB | every node of the three databases equal to the database; credit and label in the metadata |
-| `bafu-2026-v1-patched-openlca.zip` | 48.3 MB | 11,947 processes and 13,874 flows; every exchange with its flow, unit, provider and amount; credit and label in every process |
-| `bafu-2026-v1-patched-ilcd.zip` | 54.8 MB | 11,947 process datasets counted; the credit and the label searched in each. Not compared exchange by exchange |
+| `bafu-2026-v1-patched-openlca.zip` | 48.3 MB | 11,947 processes and 13,874 flows; every exchange with its flow, unit, provider and amount; credit and label in every process. In that run the direction of an exchange was not yet compared; since 20 November 2026 it is, and the file is held back |
+| `bafu-2026-v1-patched-ilcd.zip` | 54.8 MB | 11,947 process datasets counted; the credit and the label searched in each. Not compared exchange by exchange; held back |
 | `bafu-2026-v1-patched-simapro.csv` | 50.9 MB | 11,947 processes; 114,291 input rows, each resolving to one product; 293,747 elementary rows with section, name, subcompartment, unit and amount |
 | `bafu-2026-v1-patched-ecospold1.zip` | 46.8 MB | 11,947 files, one for every dataset of the database; each valid EcoSpold 1, with the label and the credit; with those taken off, each equal to the file the patch run wrote (267 MB in all, fingerprint `f08a6b23…0978`) |
 | `MODIFICATIONS.json`, `MODIFICATIONS.md` | 4.3 MB, 19 kB | |
@@ -206,7 +231,8 @@ Read these before relying on a file. Each is pinned by a test in `export-tests/`
   subcompartments. They do not merge with EF 3.1 or with a tool's reference flows.
 - **Units and flow properties are the file's own**, with minted ids. Imported into an
   openLCA database that has reference data, they sit beside it.
-- **Every elementary exchange is written as an input** in the JSON-LD, emissions too.
+- **Every elementary exchange is written as an input** in the JSON-LD, emissions too. The
+  read-back finds it, and the openLCA file is held back for it (see above).
 - **An activity with a second product** is written as an allocated co-product, where
   Brightway credits the second product against its other producer. Scores differ. The
   BAFU:2026 v1 files have none: every dataset has one reference product and no co-product.

@@ -76,10 +76,15 @@ class FromManifest(unittest.TestCase):
             figures_of(account, "comparison")["unexplained"], comparison["rows_no_step_explains"]
         )
         back = manifest["exports"]["patched"]["read_back_matches"]
+        # Two of the four were compared and are the same; the two held back are counted apart.
         self.assertEqual(
             figures_of(account, "exports"),
-            {"file formats": len(back), "read back the same": sum(back.values())},
+            {"file formats": len(back), "read back the same": 2, "held back": 2},
         )
+        self.assertEqual([value for value in back.values() if value is True], [True, True])
+        said = [text for text in account["remarks"] if "is not among the files" in text]
+        self.assertEqual(len(said), 2)
+        self.assertTrue(any(text.startswith("The openLCA export was written and read back") for text in said))
         # another number in the manifest, another figure in the account
         changed = copy.deepcopy(manifest)
         changed["comparison"]["exchange_rows_changed"] = 4321
@@ -108,7 +113,12 @@ class FromManifest(unittest.TestCase):
         self.assertNotIn(
             "`", "".join(account["blocking"]), "a text of the run can't open a mark of the page"
         )
-        self.assertEqual(account["remarks"], [release_manifest.NOT_PUBLISHED])
+        # What the manifest says of its files, then one remark for each format held back.
+        self.assertEqual(account["remarks"][0], release_manifest.NOT_PUBLISHED)
+        self.assertEqual(
+            [text.split(" export was written")[0] for text in account["remarks"][1:]],
+            ["The ILCD", "The openLCA"],
+        )
         fixes, patches = len(manifest["import_fixes"]), len(manifest["patches"])
         self.assertIn(f"{fixes} import fix", account["contents"][0])
         self.assertIn(f"{patches} community patches", account["contents"][0])
