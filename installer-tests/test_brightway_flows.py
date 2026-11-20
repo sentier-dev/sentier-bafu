@@ -300,6 +300,15 @@ def test_the_files_say_how_they_were_linked_and_keep_the_file(data_root, links_f
     kept = out / "mappings" / "brightway-flows" / links_file.name
     assert kept.read_bytes() == links_file.read_bytes()
     assert not (out / "mappings" / "bafu-2026-v1__ef-3.1").exists()
+    # no notice beside the file, none beside the copy
+    assert sorted(p.name for p in kept.parent.iterdir()) == [links_file.name]
+    # a notice beside the file (the terms the file is under) goes with the copy
+    notice = links_file.with_name(links_file.name + ".NOTICE.md")
+    notice.write_text("Open Database License 1.0\n")
+    again = data_root.parent / "linked-with-notice"
+    sb.import_files(again, data_root=data_root, flow_links=links_file, datapackages=False)
+    copied = again / "mappings" / "brightway-flows" / notice.name
+    assert copied.read_text() == "Open Database License 1.0\n"
     plain = data_root.parent / "plain"
     sb.import_files(plain, data_root=data_root, datapackages=False)
     mapped = json.loads((plain / "manifest.json").read_text())

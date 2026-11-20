@@ -191,6 +191,9 @@ class WholePath(unittest.TestCase):
         record = json.loads((self.linked_run / "patched" / "build.json").read_text())
         kept = self.linked_run / "patched" / "flow-links.csv"
         self.assertEqual(kept.read_bytes(), build_release_flow_links().read_bytes())
+        # the file is under the Open Database License: its notice is beside the copy
+        notice = kept.with_name("flow-links.csv.NOTICE.md")
+        self.assertIn("Open Database License 1.0", notice.read_text())
         self.assertEqual(record["install"]["flow_links"]["file"], build_release_flow_links().name)
         self.assertEqual(record["install"]["flow_terms_of"], "bafu-2026")
         exports = json.loads(
