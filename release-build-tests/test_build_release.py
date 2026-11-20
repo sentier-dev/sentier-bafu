@@ -42,14 +42,35 @@ def options(**values) -> argparse.Namespace:
 
 
 class OlderPython(unittest.TestCase):
-    """The build and the export start on Python 3.12, and the formatter writes for 3.14."""
+    """The build, the export, the site and the records start on Python 3.12; the package is
+    for 3.14. ruff is told so (`[tool.ruff.per-file-target-version]`): it keeps the
+    parentheses of `except (A, B):` and reports the form without them."""
 
-    def test_no_script_catches_two_errors_without_parentheses(self):
+    def test_ruff_reads_the_scripts_as_python_3_12(self):
+        import tomllib
+
+        ruff = tomllib.loads((REPOSITORY / "pyproject.toml").read_text())["tool"]["ruff"]
+        self.assertEqual(
+            ruff["per-file-target-version"],
+            {"scripts/**": "py312", "release-build-tests/**": "py312", "export-tests/**": "py312"},
+        )
+
+    def test_no_script_that_ruff_leaves_out_catches_two_errors_without_parentheses(self):
+        """ruff does not read the scripts its configuration leaves out, and they start on the
+        runner's own Python too. For them the clause is looked for here."""
         import re
+        import tomllib
 
-        # every script: the site's and the records' start with the runner's own Python too
-        files = sorted((REPOSITORY / "scripts").rglob("*.py"))
-        self.assertGreater(len(files), 40)
+        ruff = tomllib.loads((REPOSITORY / "pyproject.toml").read_text())["tool"]["ruff"]
+        left_out = [entry for entry in ruff["extend-exclude"] if entry.startswith("scripts/")]
+        files = sorted(
+            file
+            for entry in left_out
+            for file in (
+                (REPOSITORY / entry).rglob("*.py") if entry.endswith("/") else [REPOSITORY / entry]
+            )
+        )
+        self.assertGreater(len(files), 10)
         clause = re.compile(r"^\s*except\s+[^(:\s][^:(]*,", re.MULTILINE)
         for file in files:
             found = clause.findall(file.read_text(encoding="utf-8"))
@@ -74,6 +95,29 @@ class OlderPython(unittest.TestCase):
 
 
 class Plan(unittest.TestCase):
+    def test_a_build_takes_the_countries_factors_unless_it_is_told_not_to(self):
+        """A flow that names a country takes that country's factor. For land use that is
+        further from BAFU's published results, so the build has the installer's switch."""
+        self.assertTrue(build_release.plan(options())["located"])
+        self.assertTrue(build_release.plan(options(skip_located=False))["located"])
+        for no_patches, said in (
+            (False, "patched copy (community patches applied), the world's factors"),
+            (True, "provider release, the world's factors"),
+        ):
+            paths = build_release.plan(options(no_patches=no_patches, skip_located=True))
+            self.assertFalse(paths["located"])
+            self.assertEqual(paths["label"], said)
+        parser = build_release.arguments()
+        build = parser.parse_args(["build", "release", "out", "--skip-located"])
+        whole = parser.parse_args(["release", "release", "out", "--skip-located"])
+        self.assertTrue(build.skip_located and whole.skip_located)
+        self.assertFalse(parser.parse_args(["release", "release", "out"]).skip_located)
+        # the whole path hands the switch to both builds, and a build to the installer
+        source = (REPOSITORY / "scripts" / "build_release.py").read_text()
+        self.assertIn('options += ["--skip-located"] if args.skip_located else []', source)
+        self.assertEqual(source.count('*([] if paths["located"] else ["--skip-located"]),'), 2)
+        self.assertIn('"located": paths["located"],', source)
+
     def test_a_patched_build_is_named_as_patched(self):
         paths = build_release.plan(options())
         self.assertTrue(paths["patched"])
@@ -591,6 +635,14 @@ class BuildRecords(unittest.TestCase):
             len(build_release.FLOW_LINKS.read_text().splitlines()),
             len(crosswalk.read_text().splitlines()),
         )
+        # the file is under the Open Database License, not the repository's licence: the
+        # notice that says so is beside it, under the name the installer looks for
+        notice = build_release.FLOW_LINKS_NOTICE
+        self.assertEqual(notice.name, build_release.FLOW_LINKS.name + ".NOTICE.md")
+        text = notice.read_text()
+        self.assertIn("Open Database License 1.0", text)
+        self.assertIn("https://opendatacommons.org/licenses/odbl/1-0/", text)
+        self.assertIn("https://doi.org/10.5281/zenodo.23554066", text)
 
     def test_the_comparison_refuses_two_builds_of_different_linkings(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -681,6 +733,33 @@ class ExportCommand(unittest.TestCase):
 
     def test_a_build_that_wrote_no_summary_is_not_exported(self):
         self.assertIsNone(self.command(summary=None))
+
+    def test_the_export_runs_with_the_locked_versions_of_its_requirements(self):
+        """The importer and the installer run at pinned commits with their locks. The export
+        step did not: it resolved its requirements anew on every run, a tagged one too."""
+        import re
+        import tomllib
+
+        command = self.command()
+        self.assertEqual(command[:5], ["uv", "run", "--locked", "--python", "3.12"])
+        script = build_release.EXPORT
+        lock = script.with_name(script.name + ".lock")
+        self.assertTrue(lock.is_file(), "uv lock --script scripts/export_release.py --python 3.12")
+        header = script.read_text().split("# ///")[1]
+        wanted = re.findall(r'#\s+"([^"]+)",', header)
+        self.assertGreaterEqual(len(wanted), 7)
+        locked = {
+            package["name"]: package for package in tomllib.loads(lock.read_text())["package"]
+        }
+        for requirement in wanted:
+            name = re.split(r"[ @=<>!~]", requirement, maxsplit=1)[0]
+            self.assertIn(name, locked, f"{name} is required and not in the lock")
+            exact = re.search(r"==([\w.]+)$", requirement)
+            if exact:
+                self.assertEqual(locked[name]["version"], exact.group(1), name)
+            commit = re.search(r"\.git@([0-9a-f]{40})$", requirement)
+            if commit:
+                self.assertIn(commit.group(1), locked[name]["source"]["git"], name)
 
 
 class Syntax(unittest.TestCase):

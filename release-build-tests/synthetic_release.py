@@ -17,7 +17,9 @@ What it exercises:
 - a dataset with the number and input that patch 0001 corrects;
 - a dataset whose name starts with `xx` (patch 0003 flags it);
 - an input declared in kWh from a dataset whose unit is MJ: the build takes the amount as
-  written, the audit lists it, and `LABELS` names the made-up finding it belongs to.
+  written, the audit lists it, and `LABELS` names the made-up finding it belongs to;
+- a flow that names a country (`Water, river, CH`): the build gives it Switzerland's factor
+  on a node of its own, which the audit, the comparison and the exports then meet.
 
 `LAYER` is a made-up contribution: the crop takes its electricity from the plant instead of
 from the mix. It is built beside the patched copy, as a database of its own.
@@ -36,6 +38,11 @@ CH4 = ("Methane, fossil", *AIR, "kg")
 N2O = ("Dinitrogen monoxide", *AIR, "kg")
 GAS = ("Gas, natural/m3", "resources", "in ground", "Nm3")
 UPTAKE = ("Carbon dioxide, in air", "resources", "biotic", "kg")
+# A flow that names a country. The mapping states the country beside its EF 3.1 flow, and
+# the water use method has a factor of Switzerland for it (1.34 m3 world eq. per m3) beside
+# the factor without a location (42.95).
+WATER_CH = ("Water, river, CH", "resources", "in water", "m3")
+WATER_USE_CH, WATER_USE = 1.34, 42.95
 DISPOSAL = "Disposal, polyethylene, 0.4% water, to municipal incineration"
 
 # code (file name), number, name, category, location, unit, exchanges
@@ -83,6 +90,7 @@ DATASETS = (
         (
             ("input", 103, "Synthetic electricity mix", "Europe without Switzerland", "kWh", 0.05),
             ("from nature", UPTAKE, 1.5),
+            ("from nature", WATER_CH, 0.02),
             ("to nature", N2O, 0.001),
         ),
     ),
@@ -135,6 +143,10 @@ EXPECTED = {
     "climate, patched": {"syn-berries": 0.00957 * 3.0},
     # The contribution: the crop's 0.05 kWh come from the plant, not from the mix
     "climate, contribution": {"syn-crop": 0.05 * _POWER_SCORE + 0.001 * 273},
+    # The crop draws 0.02 m3 of `Water, river, CH`: with Switzerland's factor, and with the
+    # factor without a location when the build is told to leave the countries' factors out
+    "water": {"syn-crop": 0.02 * WATER_USE_CH},
+    "water, the world's factors": {"syn-crop": 0.02 * WATER_USE},
     "fossils": {
         "syn-gas": 35.98,
         "syn-power": 0.2 * 35.98,

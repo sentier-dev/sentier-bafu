@@ -6,12 +6,13 @@
 The record decides. A finding's status is computed from the dated evidence in its record, and
 this job projects it onto the finding's issue:
 
-- labels: the finding label (`finding_label` in site/config.json), exactly one `status: …` label in the words the site shows, and
-  `help wanted` while the finding needs a second measurement. An issue filed as a finding
-  that has no merged record carries `needs-triage` instead. A label set by hand is put right
-  at the next run;
+- labels: the finding label (`finding_label` in site/config.json) and exactly one `status: …`
+  label in the words the site shows. An issue filed as a finding that has no merged record
+  carries `needs-triage` instead. A label set by hand is put right at the next run. GitHub's
+  own labels (`help wanted`, `question`, …) are a person's to set and are left alone;
 - one comment when the status changes, never two: the comment carries a hidden marker;
-- the issue is closed when the status is final (corrected, withdrawn, for information).
+- the issue is closed when the status becomes final (corrected, withdrawn, for information).
+  An issue a person reopens after that is not closed again: it is listed for a person.
 
 Nothing here is a second copy to keep in step: delete every label and run this again, and the
 issues say what the records say. Standard library only; `.github/workflows/sync.yml` runs it.
@@ -37,7 +38,6 @@ from github_api import ApiError, GitHub, NotFound, RateLimited, plain, quoted, r
 
 ROOT = community.ROOT
 FINDING_LABEL = community.load_config()["finding_label"]  # this repository's label for a finding
-HELP_LABEL = "help wanted"
 TRIAGE_LABEL = "needs-triage"
 CONTRIBUTION_LABEL = "contribution"
 STATUS_PREFIX = "status: "
@@ -72,17 +72,14 @@ def expected_labels(key, provider):
     """The labels the issue of a finding carries. `key` is None for an issue without a record."""
     if key is None:
         return {FINDING_LABEL, TRIAGE_LABEL}
-    labels = {FINDING_LABEL, label_for(key, provider)}
-    if key == "filed":
-        labels.add(HELP_LABEL)
-    return labels
+    return {FINDING_LABEL, label_for(key, provider)}
 
 
 def owned(label):
     """Labels only this job writes on a finding issue. Whatever else an issue carries is left alone.
     GitHub tells labels apart without regard to case, and so does this job."""
     label = label.casefold()
-    return label.startswith(STATUS_PREFIX) or label in RETIRED_LABELS or label in (HELP_LABEL, TRIAGE_LABEL)
+    return label.startswith(STATUS_PREFIX) or label in RETIRED_LABELS or label == TRIAGE_LABEL
 
 
 def missing(expected, present):
@@ -235,7 +232,18 @@ def plan(findings, issues, config):
                 entry["comment"] = announcement(records, config)
             final = all(community.stage(record) in FINAL for record in records)
             if final and issue["state"] == "open":
-                entry["close"] = FINAL[stage]
+                if issue.get("state_reason") == "reopened" and not changed:
+                    # Its labels already say the final status, so the job closed it before and
+                    # a person reopened it, to discuss the finding further. Closing it again
+                    # every night would overrule that person without a word. (An issue that
+                    # was reopened earlier and whose finding only now becomes final is closed.)
+                    entry["person"].append(
+                        f"#{number} was reopened, and {', '.join(ids)} has a final status "
+                        f"({community.status_label(stage, provider)}). It stays open; close it by "
+                        "hand when the discussion is over."
+                    )
+                else:
+                    entry["close"] = FINAL[stage]
             elif not final and issue["state"] != "open":
                 entry["person"].append(
                     f"#{number} is closed, but {', '.join(ids)} is still on its way "

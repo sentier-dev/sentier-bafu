@@ -30,6 +30,9 @@ class Coverage:
     # per method, how many flows of a country take that country's own factor in it, sorted by
     # method id: the methods in which naming a country can move a score, and no other
     located_by_method: tuple[tuple[str, int], ...] = ()
+    # linked flows that name a country for which no method has a factor of that country:
+    # they keep the factor without a location
+    flows_named_without: int = 0
     # how the elementary flows were linked: through the mapping folder of sentier-mappings,
     # or through Brightway Flows (then ``link_lines`` is that linking's own report)
     linking: str = "sentier-mappings"
@@ -57,6 +60,11 @@ def render(cov: Coverage) -> str:
                 "  a country's own factor in: "
                 + ", ".join(f"{method} ({n})" for method, n in cov.located_by_method)
             )
+    if cov.flows_named_without:
+        located_lines.append(
+            f"  {cov.flows_named_without} of the linked flows name a country for which no "
+            "method has a factor of that country; they keep the factor without a location"
+        )
     conflict_lines = []
     if cov.unit_conflicts:
         conflict_lines = [

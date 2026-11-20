@@ -177,7 +177,7 @@
             '<td class="ba-bars" aria-hidden="true"><span class="ba-bar is-before" style="width:' + w(x.before) + '%"></span>' +
             '<span class="ba-bar is-after" style="width:' + w(x.after) + '%"></span></td></tr>';
         }).join('') + '</tbody></table></div>' +
-        (entry.parts_not_listed ? '<p class="note">' + grouped(entry.parts_not_listed) + ' smaller parts are not listed.</p>' : '') + '</details>';
+        (entry.parts_not_listed ? '<p class="note">' + esc(grouped(entry.parts_not_listed)) + ' smaller parts are not listed.</p>' : '') + '</details>';
     });
     return html || '<p class="list-none">The breakdown of this ' + esc(D.items.one) + ' holds no part.</p>';
   }

@@ -82,7 +82,7 @@ def comparison(file: Path) -> list[str]:
     lines = [
         f"  {section['exchange_rows_compared']:,} exchange rows compared with "
         f"{section['baseline']}: {section['exchange_rows_changed']:,} changed, "
-        f"{section['rows_no_step_explains']:,} that no step explains",
+        f"{section['rows_no_step_explains']:,} that no step recorded on their dataset explains",
     ]
     by_step = section["rows_changed_by_step"]
     if by_step:
@@ -108,9 +108,16 @@ def exports(folder: Path) -> list[str]:
         read = ""
         if file["kind"] in READ_BACK:
             matches = section["read_back_matches"].get(file["kind"])
-            read = "read back: " + ("matches" if matches else "differs")
+            read = "read back: " + {True: "matches", "counted": "counted only"}.get(
+                matches, "differs"
+            )
         line = f"  {file['name']:<38} {file['bytes']:>12,} bytes  sha256 {file['sha256'][:12]}"
         lines.append(f"{line}  {read}".rstrip())
+    for kind, entry in sorted(section["held_back"].items()):
+        lines.append(
+            f"  {kind}: written, read back and held back, not among the files "
+            f"({entry['differences']:,} difference(s)). {entry['reason']}"
+        )
     lines.append(
         f"  label {section['label']}; "
         "a build with a tag keeps these files under its tag; any other keeps none"

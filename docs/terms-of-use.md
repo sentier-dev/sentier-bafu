@@ -50,10 +50,12 @@ The full reading, with every clause and what sentier.dev's wiki says about it, i
 A file of a build is offered on [Patch and build](../site/patch-and-build.md) only where a
 tagged build holds the very same bytes; GitHub gives each file it keeps a checksum, and the
 page compares it with the checksum the build recorded. A click on the file first shows
-BAFU's terms in short, and the file is handed out only when the reader accepts them
-(clause 7). Nothing about the click is recorded or remembered: the question is asked each
-time. It needs JavaScript; without it, a download link leads to this section and hands out
-nothing. The manifest of a build holds no data and is linked as it is.
+BAFU's terms in short, and the page follows the link to the file only when the reader
+accepts them (clause 7). Nothing about the click is recorded or remembered: the question is
+asked each time. It needs JavaScript; without it, a download link leads to this section and
+hands out nothing. The question is a notice in the page, not a gate: it cannot keep anyone
+from the file, whose address is in the page and under the tag. The manifest of a build holds
+no data and is linked as it is.
 
 The files are kept under the build's tag on GitHub, and the page of a tag lists them without
 asking anything. Its notes therefore begin with the same terms, in the same words, and lead

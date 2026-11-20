@@ -22,7 +22,7 @@ folder, which holds BAFU's inventory and stays local.
 | Step | What it does | It fails when |
 |---|---|---|
 | provider build | BAFU's release as it is: adapter, importer, Brightway database `bafu-2026` with the EF 3.1 methods, audit | a step of the build stops, or the audit has an error. Findings on BAFU's own release are reported and do not fail |
-| world factors build | BAFU's release once more (`build --no-patches --skip-located`): every elementary flow on its world-wide factor, also one that names a country. The state before the countries' factors | as the provider build |
+| world factors build | BAFU's release once more (`build --no-patches --skip-located`): every elementary flow on its world-wide factor, also one that names a country. The state before the countries' factors. For information only: nothing that is kept depends on it. If it fails, the run says so, the comparison is made without that state, and the run is judged without it (`FOR_INFORMATION` in `release_manifest.py`) | as the provider build |
 | patched build | import fixes and community patches, then the same; database `bafu-2026-v1-patched`, marked Modified Data | a patch stops, the result is not valid EcoSpold 1, the audit has an error or a finding |
 | written files | every written file against the EcoSpold 1 schema, and the file set against the run summary | a file is invalid, or the files are not the ones the summary describes |
 | patch run | the table of the patch run, and what each patch matched now and in the previous tagged build | the release is not a known one, a step stopped, or a patch changes nothing |
@@ -60,8 +60,8 @@ process; peak memory is the largest resident size of the step's process tree:
 | patched build | 300 | 1.5 GB | 14 import fixes and 11 patches; 11,601 datasets changed; audit passed without a finding |
 | written files | 7 | 0.1 GB | 11,947 files valid EcoSpold 1, and the ones the summary describes |
 | patch run | under 1 | | every patch changed as much as in the earlier run |
-| comparison | 3 | 1.1 GB | 188 of 420,063 exchange rows differ, each explained by a step; in each of 25 methods the scores of three datasets move, all three by patch 0001 |
-| exports | 188 | 3.0 GB | four formats written, each read back without a difference |
+| comparison | 3 | 1.1 GB | 188 of 420,063 exchange rows differ, each explained by a step recorded on its dataset (the attribution is by dataset, not by exchange); in each of 25 methods the scores of three datasets move, all three by patch 0001 |
+| exports | 188 | 3.0 GB | four formats written and read back. In that run no difference was found; the read-back did not yet compare the direction of an exchange, and the ILCD package was only counted. Since 20 November 2026 the openLCA and ILCD files are held back ([exports.md](exports.md)) |
 | the whole command | 615 | 3.2 GB | |
 
 Since 14 November 2026 the exports step also packs the patched files as ecoSpold v1 with
@@ -170,10 +170,11 @@ Brightway, openLCA, ILCD and SimaPro, the ecoSpold v1 archive, and `MODIFICATION
 also when keeping them failed (Manuel Klarmann, 14 November 2026).
 
 The files are Modified Data, and BAFU's Terms of Use ask that whoever receives them accepts
-the terms. The site offers each file only after asking for that ("Downloads from this site"
-in [Data and terms](terms-of-use.md)). A page of a tag on GitHub can't ask: the notes of the
-tag begin with the terms, in the words the site's dialog uses, and lead to the site's page of
-them. The record of changes in the files names who confirmed a problem for BAFU only as
+the terms. The site asks for that before it links a file ("Downloads from this site" in
+[Data and terms](terms-of-use.md)). The question is a notice in the page, not a gate: a page
+of a tag on GitHub can't ask, lists the same files, and each downloads there or by its
+address without a question. So the notes of the tag begin with the terms, in the words the
+site's dialog uses, and lead to the site's page of them. The record of changes in the files names who confirmed a problem for BAFU only as
 "BAFU (date)".
 
 The manifest (`scripts/release_build/release_manifest.py`, format

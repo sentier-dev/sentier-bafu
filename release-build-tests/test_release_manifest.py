@@ -196,17 +196,54 @@ def comparison(baseline, candidate, step_id="0001-amount"):
     }
 
 
+TURNED = "('db', 'x'): 2 elementary exchange(s) in the wrong direction"
+
+
 def exports(name):
+    """The exports' own manifest as the step writes it today: four formats written and read
+    back, two of them held back and set aside, so not among the files."""
     kinds = ("brightway", "openlca", "ilcd", "simapro")
+    formats = {kind: {"status": "completed", "seconds": {"write": 1.0}} for kind in kinds}
+    checks = {
+        kind: {"passed": True, "problems": [], "total": 0, "depth": "compared"} for kind in kinds
+    }
+    formats["openlca"] |= {
+        "status": "held back",
+        "stage": "read back",
+        "error": "3 difference(s) from the database",
+    }
+    checks["openlca"] |= {"passed": False, "problems": [TURNED] * 3, "total": 3}
+    formats["ilcd"] |= {
+        "status": "held back",
+        "stage": "read back",
+        "error": "counted, not compared with the database",
+    }
+    checks["ilcd"]["depth"] = "counted"
     return {
         "status": "completed",
         "label": "Modified Data",
         "labels": {"file": "export_labels.toml", "sha256": A, "amounts_converted": 0},
-        "formats": {kind: {"status": "completed", "seconds": {"write": 1.0}} for kind in kinds},
-        "checks": {kind: {"passed": True, "problems": [], "total": 0} for kind in kinds},
+        "formats": formats,
+        "checks": checks,
         "files": {
             "brightway": {"name": f"{name}.bw2package", "bytes": 10, "sha256": A},
             "simapro": {"name": f"{name}-simapro.csv", "bytes": 20, "sha256": B},
+        },
+        "held_back": {
+            "openlca": {
+                "reason": "The writer marks every elementary exchange as an input.",
+                "name": f"{name}-openlca.zip",
+                "bytes": 30,
+                "sha256": A,
+                "differences": 3,
+            },
+            "ilcd": {
+                "reason": "The read-back only counts the datasets.",
+                "name": f"{name}-ilcd.zip",
+                "bytes": 40,
+                "sha256": B,
+                "differences": 0,
+            },
         },
         "counts": {"activities": 3, "elementary_flows": 5, "exchanges": 30},
     }
@@ -465,7 +502,25 @@ class WholeManifest(Folder):
                 },
             ],
         )
-        self.assertEqual(set(exports_["read_back_matches"].values()), {True})
+        # True or false where a file was compared with the database; "counted" where its
+        # datasets were only counted. A format that is held back is said, with its reason,
+        # and is not among the files.
+        self.assertEqual(
+            exports_["read_back_matches"],
+            {"brightway": True, "openlca": False, "ilcd": "counted", "simapro": True},
+        )
+        self.assertEqual(
+            exports_["held_back"],
+            {
+                "openlca": {
+                    "reason": "The writer marks every elementary exchange as an input.",
+                    "differences": 3,
+                },
+                "ilcd": {"reason": "The read-back only counts the datasets.", "differences": 0},
+            },
+        )
+        self.assertFalse({"openlca", "ilcd"} & {entry["kind"] for entry in exports_["files"]})
+        self.assertEqual(exports_["formats"]["ilcd"]["status"], "held back")
         self.assertIs(exports_["published"], False)
         # made for a tag and nothing in the way: its export files are to be kept under the tag
         self.assertIs(data["exports"]["published"], True)
@@ -499,6 +554,22 @@ class WholeManifest(Folder):
         # the patched copy's own sections are untouched by it
         self.assertEqual(data["brightway"]["patched"]["database"], "bafu-2026-v1-patched")
         self.assertEqual([p["id"] for p in data["patches"]], ["0001-amount", "0002-nothing-here"])
+
+    def test_a_step_that_is_for_information_does_not_fail_the_run(self):
+        """The comparison is the gate. The build with the world's factors adds a state to the
+        chain beside it; when it fails, the run is judged without it."""
+        self.assertIn("world factors build", rm.FOR_INFORMATION)
+        steps = write_run(self.out)
+        aside = {"name": "world factors build", "status": "failed", "seconds": 3.0}
+        steps.insert(1, aside | {"peak_memory_mb": 10.0, "reason": "no space left on device"})
+        data = rm.manifest(self.out, tag="patched-2026-v1.1", steps=steps)
+        self.assertEqual(rm.shape_errors(data), [])
+        self.assertEqual((data["status"], data["problems"]), ("completed", []))
+        self.assertEqual(rm.release_errors(data), [])
+        self.assertEqual(data["steps"][1]["status"], "failed")  # and it is still said
+        # any other step that fails still fails the run
+        steps[2] |= {"status": "failed", "reason": "audit failed"}
+        self.assertEqual(rm.manifest(self.out, tag=None, steps=steps)["status"], "failed")
 
     def test_a_failed_step_fails_the_manifest_and_blocks_the_release(self):
         steps = write_run(self.out)

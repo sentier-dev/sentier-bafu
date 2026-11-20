@@ -3,7 +3,10 @@ name: Sync
 # Issues follow records: labels, one comment when the status of a finding changes, and the
 # issue is closed at a final status. scripts/sync.py compares; nothing else writes labels.
 # Runs after a record changed on main, every night, and on request. A run on request only
-# lists the differences unless "apply" is ticked.
+# lists the differences unless "apply" is ticked. The runs after a push and at night only list
+# them too, until the repository variable SYNC_APPLY is set to "true": so the first run that
+# writes is one a person starts, after reading what it would do (docs/automation.md, "The
+# first sync").
 
 on:
   push:
@@ -49,7 +52,7 @@ jobs:
       - name: Compare the issues with the records
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          SYNC_APPLY: ${{ github.event_name != 'workflow_dispatch' || inputs.apply }}
+          SYNC_APPLY: ${{ (github.event_name != 'workflow_dispatch' && vars.SYNC_APPLY == 'true') || inputs.apply }}
           SYNC_COMMENTS: ${{ github.event_name != 'workflow_dispatch' || inputs.comments }}
         run: |
           set --

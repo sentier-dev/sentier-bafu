@@ -14,7 +14,7 @@
     "world factors build": {
       "short": "World factors",
       "title": "BAFU's release, with the world's factors",
-      "text": "The same database is built once more, with every elementary flow on its world-wide factor, also a flow that names a country. The comparison then shows what the countries' own factors change, as a step of its own with its claim, and nothing changes silently."
+      "text": "The same database is built once more, with every elementary flow on its world-wide factor, also a flow that names a country. The comparison then shows what the countries' own factors change, as a step of its own with its claim, and nothing changes silently. This step is for information: if it fails, the run says so and is judged without it."
     },
     "patched build": {
       "short": "Changes applied",
@@ -34,7 +34,7 @@
     "comparison": {
       "short": "Compared",
       "title": "The two databases, compared",
-      "text": "Every exchange of BAFU's release is compared with the patched one, and every score under each impact method. Each difference must be explained by an import fix or a patch. A difference that nothing explains stops the run."
+      "text": "Every exchange of BAFU's release is compared with the patched one, and every score under each impact method. Each difference must be explained by an import fix or a patch that the run recorded on that dataset. A difference that nothing explains stops the run."
     },
     "fix builds": {
       "short": "Each fix alone",

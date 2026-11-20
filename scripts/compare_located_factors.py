@@ -8,7 +8,8 @@ without that, scores every dataset in the 25 EF 3.1 categories and writes what d
 * how many flows name a country, how many of them take a factor of their country, and in
   which methods;
 * per category, how many datasets move by more than 1 % and by more than 10 %, and in which
-  direction;
+  direction (by the value of the score; none is given for a dataset whose scores are zero
+  to the precision of the solve, see `NEAR_ZERO`);
 * with `--published-results FILE`: how each way agrees with BAFU's published LCIA results,
   for the categories in which a dataset moves. Matching those results is not a goal; they
   are a second reading of what a flow that names a country means.
@@ -36,6 +37,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from compare_flow_linkings import pinned_data, relative  # noqa: E402
 
 WITH, WITHOUT = "with the factors of countries", "with the factors without a location only"
+#: A score below this share of the category's median score is zero to the precision of the
+#: solve (water use: scores of 1e-17 beside a median of 0.04). Such a dataset still counts
+#: as moved when its two scores differ, and no direction is given for it: the sign of the
+#: difference is not the same on two machines.
+NEAR_ZERO = 1e-9
+
+
+def directions(x, y, moved) -> dict:
+    """Which way the moved datasets go: by the value of the score, and only for the datasets
+    whose larger score is above the floor. The three counts add up to the moved ones."""
+    import numpy as np
+
+    size = np.maximum(np.abs(x), np.abs(y))
+    floor = NEAR_ZERO * float(np.median(size[size > 0])) if (size > 0).any() else 0.0
+    sure = moved & (size > floor)
+    return {
+        "lower": int((sure & (y < x)).sum()),
+        "higher": int((sure & (y > x)).sum()),
+        "near_zero_no_direction": int((moved & ~sure).sum()),
+        "floor": floor,
+    }
 
 
 def flows(data_root: Path) -> dict:
@@ -94,8 +116,7 @@ def scores(work: Path, data_root: Path) -> tuple[dict, dict[str, Path]]:
                     "method": category.method_id,
                     "moved_over_1_percent": int(moved.sum()),
                     "moved_over_10_percent": int((relative(x, y) > 0.10).sum()),
-                    "lower": int((moved & (np.abs(y) < np.abs(x))).sum()),
-                    "higher": int((moved & (np.abs(y) > np.abs(x))).sum()),
+                    **directions(x, y, moved),
                 }
             )
     result = {
