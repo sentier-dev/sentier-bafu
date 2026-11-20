@@ -952,6 +952,21 @@ class AnyRunTests(unittest.TestCase):
         self.assertNotIn("kept under", text)
         self.assertNotIn("tag", text.replace("stage", ""))
 
+    def test_a_completed_run_with_a_failed_step_does_not_say_that_none_failed(self):
+        """A step that is for information can fail without failing the run. The page then
+        names it, and does not say "none failed"."""
+        from sitebuild import lastrun
+
+        record = self.record()
+        steps = record["summary"]["steps"]
+        steps[1] = steps[1] | {"name": "world factors build", "status": "failed", "reason": "no space left"}
+        self.assertEqual(record["summary"]["status"], "completed")
+        answer, sentence = lastrun.worked(record)
+        self.assertEqual(answer, "yes")
+        self.assertNotIn("none failed", sentence)
+        self.assertIn("1 of 3 steps completed", sentence)
+        self.assertIn("1 step failed that the result does not depend on: <strong>world factors build</strong>.", sentence)
+
     def test_a_step_this_place_cant_run_is_open_with_its_reason_and_is_no_failure(self):
         markup, _, text = shown(self.record())
         self.assertIn("It worked", text)
