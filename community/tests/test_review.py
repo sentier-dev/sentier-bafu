@@ -135,6 +135,35 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(found["classes"]["x"]["a"], before_after.NOT_CLAIMED)
 
 
+class VerdictTests(unittest.TestCase):
+    """"All as claimed" reads like a second check. Where every claim was worked out by the
+    comparison itself, the classes repeat its own finding, and the page says that."""
+
+    def test_claims_that_were_worked_out_are_not_called_a_confirmation(self):
+        from sitebuild import beforeafter
+
+        totals = dict.fromkeys(before_after.CLASSES, 0) | {before_after.AS_CLAIMED: 3}
+        worked_out = beforeafter.verdict(totals, None, stated=False)
+        self.assertIn("3 values moved, all inside what a cause can reach.", worked_out)
+        self.assertIn("is not a second check", worked_out)
+        self.assertNotIn("as claimed", worked_out)
+        stated = beforeafter.verdict(totals, None, stated=True)
+        self.assertIn("3 values moved, all as claimed.", stated)
+        # a value outside every reach is said the same way in both cases
+        odd = totals | {before_after.NOT_CLAIMED: 1}
+        for known in (True, False):
+            self.assertIn("1 value moved outside", beforeafter.verdict(odd, None, stated=known))
+
+    def test_a_claim_counts_as_stated_only_when_its_author_stated_it(self):
+        from sitebuild import beforeafter
+
+        derived = {"claim": before_after.claim("worked out", (), derived=True, reach=2)}
+        own = {"claim": before_after.claim("the author says", (), derived=False)}
+        self.assertFalse(beforeafter.stated_claims({"causes": [derived, {"claim": None}]}))
+        self.assertTrue(beforeafter.stated_claims({"causes": [derived, own]}))
+        self.assertFalse(beforeafter.stated_claims({}))
+
+
 class VersionTests(unittest.TestCase):
     def test_a_file_of_the_first_version_is_still_one_a_page_can_show(self):
         old = first_version(a_comparison())
