@@ -32,11 +32,28 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pandas as pd
+from sentier_brightway.bridge import BridgeEntry
+from sentier_brightway.inventory import Inventory
+from sentier_brightway.methods import MethodSpec
+from sentier_brightway.units import normalize_unit as _installer_unit
 
-from .bridge import BridgeEntry
-from .inventory import Inventory
-from .methods import MethodSpec
-from .units import normalize_unit
+#: Spellings of Brightway Flows for units the installer knows under another spelling, and one
+#: unit of its own. The installer's table does not hold them (a small change there would).
+UNIT_SPELLINGS = MappingProxyType(
+    {
+        "m2.a": "square meter-year",
+        "m3.a": "cubic meter-year",
+        "t.km": "ton kilometer",
+        "p.km": "person kilometer",
+        "sm3": "standard cubic meter",
+    }
+)
+
+
+def normalize_unit(unit: str | None) -> str:
+    """The Brightway spelling of ``unit``: the installer's, with the spellings above."""
+    return UNIT_SPELLINGS.get(unit, None) or _installer_unit(unit) if isinstance(unit, str) else ""
+
 
 #: ``flow_list`` of a target that EF 3.1 holds; every other target is outside EF 3.1.
 EF_LIST = "EF 3.1"
@@ -146,6 +163,9 @@ class FlowLinks:
     ef_flows: pd.DataFrame  # the EF 3.1 flows, and one row for each other flow a link ends on
     methods: tuple[MethodSpec, ...]
     report: LinkReport
+    #: method id -> {(flow, location): factor}: the factors of single countries, with those
+    #: a flow outside EF 3.1 takes from the flow named for it (``located.Countries``)
+    countries: Mapping[str, Mapping[tuple[str, str], float]] = MappingProxyType({})
 
 
 def load_targets(path: Path | str) -> dict[tuple[str, str, str, str], dict]:
@@ -216,6 +236,7 @@ def link(
     include_without_factor: bool = True,
     locations: Mapping[str, str] | None = None,
     in_mapping: frozenset[str] | set[str] | None = None,
+    countries: Mapping[str, Mapping[tuple[str, str], float]] | None = None,
 ) -> FlowLinks:
     """The bridge, the flows and the methods for ``build()``, from the links.
 
@@ -282,6 +303,7 @@ def link(
         == normalize_unit(rows_of[flow]["factors_unit"])
     }
     extended = []
+    countries_out: dict[str, Mapping[tuple[str, str], float]] = {}
     with_factors: set[str] = set()
     takers: dict[str, list[str]] = {}  # the flow named as the source: the flows that take from it
     for flow, source in carried.items():
@@ -292,21 +314,23 @@ def link(
         with_factors.update(flow for flow, _ in added)
         names = {flow: rows_of[flow]["flow_name"] for flow, _ in added}
         # the factors of single countries are carried the same way, country by country
+        own_countries = (countries or {}).get(spec.method_id, {})
         of_countries = {
             (flow, location): value
-            for (source, location), value in spec.located.items()
+            for (source, location), value in own_countries.items()
             for flow in takers.get(source, ())
         }
+        if own_countries or of_countries:
+            countries_out[spec.method_id] = MappingProxyType({**own_countries, **of_countries})
         extended.append(
             replace(
                 spec,
                 cfs=spec.cfs + added,
                 flow_name=MappingProxyType({**spec.flow_name, **names}),
-                located=MappingProxyType({**spec.located, **of_countries}),
             )
         )
     characterised = {code for spec in extended for code, _ in spec.cfs}
-    of_single_countries = {flow for spec in extended for flow, _ in spec.located}
+    of_single_countries = {flow for factors in countries_out.values() for flow, _ in factors}
 
     bridge: dict[str, BridgeEntry] = {}
     left_out = 0
@@ -317,7 +341,8 @@ def link(
             continue
         bridge[code] = BridgeEntry(
             target_code=row["flow_id"],
-            target_unit=row["flow_unit"],
+            # the installer normalises the unit; the spellings it lacks are spelled here
+            target_unit=UNIT_SPELLINGS.get(row["flow_unit"], row["flow_unit"]),
             conversion_factor=multiplier,
             nomenclature=without,
             target_location=(locations or {}).get(code),
@@ -374,5 +399,9 @@ def link(
         ),
     )
     return FlowLinks(
-        bridge=MappingProxyType(bridge), ef_flows=flows, methods=tuple(extended), report=report
+        bridge=MappingProxyType(bridge),
+        ef_flows=flows,
+        methods=tuple(extended),
+        report=report,
+        countries=MappingProxyType(countries_out),
     )

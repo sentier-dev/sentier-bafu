@@ -5,18 +5,31 @@ from types import MappingProxyType
 
 import pytest
 from conftest import B1, B2, CLIMATE, E1, E2, FLOWS, IONISING, P1, P1_CLIMATE_SCORE
-
-import sentier_brightway
-from sentier_brightway import cli
 from sentier_brightway.bridge import BridgeEntry, load_bridge
 from sentier_brightway.constants import BIOSPHERE_DB
-from sentier_brightway.located import locate, located_code
 from sentier_brightway.methods import MethodSpec, load_methods
+
+import bafu_brightway
+from bafu_brightway import cli
+from bafu_brightway.countries import load_factors_of_countries
+from bafu_brightway.located import locate, located_code
 
 E1_DE = located_code(E1, "DE")
 
 
+#: the factors of single countries of the methods a test made with `spec`, by method id:
+#: the installer's methods do not hold them, so they are handed to `locate` beside the methods
+COUNTRIES: dict = {}
+
+
+@pytest.fixture(autouse=True)
+def no_factors_of_countries_left_over():
+    COUNTRIES.clear()
+
+
 def spec(method_id, cfs, located=None):
+    if located:
+        COUNTRIES[method_id] = MappingProxyType(located)
     return MethodSpec(
         key=("sentier", "EF v3.1", method_id),
         method_id=method_id,
@@ -25,7 +38,6 @@ def spec(method_id, cfs, located=None):
         cfs=tuple(cfs.items()),
         flow_context=MappingProxyType({}),
         flow_name=MappingProxyType({}),
-        located=MappingProxyType(located or {}),
     )
 
 
@@ -33,12 +45,15 @@ def entry(code, location=None):
     return BridgeEntry(target_code=code, target_unit="kilogram", target_location=location)
 
 
-def test_the_methods_reader_keeps_the_factors_of_single_countries(data_root):
+def test_the_factors_of_single_countries_are_read_beside_the_methods(data_root):
     climate, ionising = load_methods(data_root)
-    # the made-up climate method has a factor of 2.0 for E1 in DE beside the 1.0 without one
+    # the made-up climate method has a factor of 2.0 for E1 in DE beside the 1.0 without one.
+    # The installer's reader leaves it out; this package reads it from the same file.
     assert dict(climate.cfs) == {E1: 1.0}
-    assert dict(climate.located) == {(E1, "DE"): 2.0}
-    assert dict(ionising.located) == {}
+    countries = load_factors_of_countries(data_root)
+    assert {method: dict(found) for method, found in countries.items()} == {
+        CLIMATE: {(E1, "DE"): 2.0}
+    }
 
 
 def test_a_flow_that_names_a_country_takes_that_countrys_factor():
@@ -48,7 +63,7 @@ def test_a_flow_that_names_a_country_takes_that_countrys_factor():
         spec("land-use", {"w": 7.0, "o": 3.0}),  # knows the flow, has no factor of DE
         spec("climate", {"c": 1.0}),  # does not know the flow
     )
-    found = locate(bridge, methods)
+    found = locate(bridge, methods, COUNTRIES)
     key = located_code("w", "DE")
     assert found.nodes == {key: ("w", "DE")}
     # the flow that names DE moves to the target of its own; the others stay
@@ -70,9 +85,9 @@ def test_a_flow_that_names_a_country_takes_that_countrys_factor():
 def test_two_flows_of_one_country_share_one_target_and_a_second_pass_changes_nothing():
     bridge = {"a": entry("w", "DE"), "b": entry("w", "DE")}
     methods = (spec("water-use", {"w": 40.0}, {("w", "DE"): 1.5}),)
-    once = locate(bridge, methods)
+    once = locate(bridge, methods, COUNTRIES)
     assert len(once.nodes) == 1 and once.flows == 2
-    twice = locate(once.bridge, once.methods)
+    twice = locate(once.bridge, once.methods, COUNTRIES)
     assert twice.bridge == once.bridge
     assert (dict(twice.nodes), twice.flows, twice.flows_without) == (dict(once.nodes), 2, 0)
     # the report publishes `per_method`: empty on a second pass would read "nothing moves"
@@ -83,7 +98,7 @@ def test_two_flows_of_one_country_share_one_target_and_a_second_pass_changes_not
 def test_without_a_named_country_nothing_changes():
     bridge = {"a": entry("w")}
     methods = (spec("water-use", {"w": 40.0}, {("w", "DE"): 1.5}),)
-    found = locate(bridge, methods)
+    found = locate(bridge, methods, COUNTRIES)
     assert found.bridge is bridge and found.methods is methods
     assert (dict(found.nodes), found.flows, found.flows_without) == ({}, 0, 0)
 
@@ -101,7 +116,7 @@ def name_the_country(data_root, source_code=B1, location="DE"):
 def test_the_build_gives_the_flow_a_node_of_its_country_and_scores_with_its_factor(data_root):
     name_the_country(data_root)
     assert load_bridge(data_root)[B1].target_location == "DE"
-    result = sentier_brightway.assemble(data_root)
+    result = bafu_brightway.assemble(data_root)
     node = result.biosphere[(BIOSPHERE_DB, E1_DE)]
     base = result.biosphere[(BIOSPHERE_DB, E1)]
     assert node["name"] == f"{base['name']}, DE" and node["location"] == "DE"
@@ -126,26 +141,28 @@ def test_the_build_gives_the_flow_a_node_of_its_country_and_scores_with_its_fact
     # the methods in which naming a country can move a score: climate has DE's factor,
     # ionising radiation does not know the flow
     assert result.coverage.located_by_method == ((CLIMATE, 1),)
-    assert f"a country's own factor in: {CLIMATE} (1)" in sentier_brightway.render(result.coverage)
+    assert f"a country's own factor in: {CLIMATE} (1)" in bafu_brightway.render(result.coverage)
 
 
 def test_a_build_from_links_that_are_located_already_writes_the_whole_node(data_root):
     """A second pass finds the targets of countries in place. The node must still get its
     name, its categories and its location, not the bare code."""
-    from sentier_brightway.build import build
     from sentier_brightway.flows import load_ef_flows, load_source_flows
     from sentier_brightway.inventory import load_inventory
 
     name_the_country(data_root)
-    once = locate(load_bridge(data_root), load_methods(data_root))
+    countries = load_factors_of_countries(data_root)
+    once = locate(load_bridge(data_root), load_methods(data_root), countries)
     assert once.bridge[B1].target_code == E1_DE
     tables = (
         load_inventory(data_root),
         load_ef_flows(data_root),
         load_source_flows(data_root, "bafu-2026"),
     )
-    first = sentier_brightway.assemble(data_root).biosphere[(BIOSPHERE_DB, E1_DE)]
-    again = build(*tables, bridge=once.bridge, methods=once.methods)
+    first = bafu_brightway.assemble(data_root).biosphere[(BIOSPHERE_DB, E1_DE)]
+    again = bafu_brightway.build(
+        *tables, bridge=once.bridge, methods=once.methods, countries=countries
+    )
     node = again.biosphere[(BIOSPHERE_DB, E1_DE)]
     assert node == first and node["location"] == "DE" and node["name"].endswith(", DE")
     assert again.coverage.flows_located == 1
@@ -156,18 +173,18 @@ def test_the_report_says_which_flows_name_a_country_without_a_factor_of_its_own(
     location, and the report says so beside the flows that were located."""
     name_the_country(data_root)
     name_the_country(data_root, source_code=B2, location="FR")
-    result = sentier_brightway.assemble(data_root)
+    result = bafu_brightway.assemble(data_root)
     assert result.links[B2].target_code == E2
     assert (result.coverage.flows_located, result.coverage.flows_named_without) == (1, 1)
     line = (
         "  1 of the linked flows name a country for which no method has a factor of that "
         "country; they keep the factor without a location"
     )
-    assert line in sentier_brightway.render(result.coverage)
+    assert line in bafu_brightway.render(result.coverage)
     # with the countries' factors left out, no flow is counted either way
-    plain = sentier_brightway.assemble(data_root, include_located=False)
+    plain = bafu_brightway.assemble(data_root, include_located=False)
     assert (plain.coverage.flows_located, plain.coverage.flows_named_without) == (0, 0)
-    assert "name a country" not in sentier_brightway.render(plain.coverage)
+    assert "name a country" not in bafu_brightway.render(plain.coverage)
 
 
 def test_the_score_follows_the_countrys_factor(data_root, tmp_path):
@@ -180,7 +197,7 @@ def test_the_score_follows_the_countrys_factor(data_root, tmp_path):
     scores = {}
     for name, located in (("with", True), ("without", False)):
         out = tmp_path / name
-        sentier_brightway.import_files(out, data_root=data_root, include_located=located)
+        bafu_brightway.import_files(out, data_root=data_root, include_located=located)
         frame = score_all(out, (by_short("climate"),)).frame.set_index("code")
         scores[name] = float(frame.loc[P1, "climate"])
     assert scores["without"] == pytest.approx(P1_CLIMATE_SCORE)
@@ -198,7 +215,7 @@ def test_the_report_says_how_many_flows_take_a_countrys_factor(data_root, capsys
 
 
 def test_a_data_root_that_names_no_country_builds_as_before(data_root):
-    result = sentier_brightway.assemble(data_root)
+    result = bafu_brightway.assemble(data_root)
     assert result.coverage.flows_located == 0
     assert not any("@" in code for _, code in result.biosphere)
 
@@ -219,7 +236,7 @@ def add_factor_of_a_country(data_root, method_id, code, location, value):
 def test_the_same_factor_of_a_country_twice_is_refused(data_root):
     add_factor_of_a_country(data_root, CLIMATE, E1, "DE", 5.0)  # the made-up data has one
     with pytest.raises(ValueError, match="duplicate .method_id, flow, location."):
-        load_methods(data_root)
+        load_factors_of_countries(data_root)
 
 
 def test_the_links_of_brightway_flows_take_the_country_from_the_mapping(data_root, tmp_path):
@@ -229,14 +246,14 @@ def test_the_links_of_brightway_flows_take_the_country_from_the_mapping(data_roo
 
     name_the_country(data_root)
     links = write(tmp_path / "targets.csv", rows())
-    result = sentier_brightway.assemble(data_root, flow_links=links)
+    result = bafu_brightway.assemble(data_root, flow_links=links)
     assert result.links[B1].target_code == E1_DE
     assert result.biosphere[(BIOSPHERE_DB, E1_DE)]["location"] == "DE"
     climate = next(m for m in result.methods if m.method_id == CLIMATE)
     assert dict(climate.cfs)[(BIOSPHERE_DB, E1_DE)] == 2.0
     assert result.coverage.flows_located == 1 and result.coverage.linking == "brightway-flows"
     # and not where it is switched off
-    plain = sentier_brightway.assemble(data_root, flow_links=links, include_located=False)
+    plain = bafu_brightway.assemble(data_root, flow_links=links, include_located=False)
     assert plain.links[B1].target_code == E1 and plain.coverage.flows_located == 0
 
 
@@ -248,7 +265,7 @@ def test_a_flow_outside_ef_takes_the_countrys_factor_of_the_flow_named_for_it(da
     add_factor_of_a_country(data_root, IONISING, E2, "FR", 9.0)
     name_the_country(data_root, B2, "FR")
     links = write(tmp_path / "targets.csv", rows())
-    result = sentier_brightway.assemble(data_root, flow_links=links)
+    result = bafu_brightway.assemble(data_root, flow_links=links)
     key = located_code(OUTSIDE, "FR")
     assert result.links[B2].target_code == key
     ionising = next(m for m in result.methods if m.method_id == IONISING)

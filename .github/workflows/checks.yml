@@ -146,9 +146,11 @@ jobs:
           uv run --no-project --python 3.12 python scripts/check_integration_receipt.py --rev "$rev"
 
   installer:
-    # The Brightway installer (src/sentier_brightway), the project's second package: its
-    # tests on a made-up data root, in the project's locked environment with the `brightway`
-    # extra. None of BAFU's data, and no download. Its lint runs in the job above.
+    # What this repository adds to the Brightway installer (src/bafu_brightway), the
+    # project's second package: its tests on a made-up data root, in the project's locked
+    # environment with the `brightway` extra, which brings the installer itself
+    # (sentier-brightway, pinned by commit). None of BAFU's data. Its lint runs in the job
+    # above.
     name: Brightway installer tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
