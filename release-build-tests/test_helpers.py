@@ -251,10 +251,10 @@ class PinnedData(unittest.TestCase):
                 self.assertRegex(digest, r"^[0-9a-f]{64}$")
         self.assertEqual({entry["pinned_by"] for entry in record}, {"this repository"})
 
-    def test_the_pins_are_the_ones_the_installer_reads_on_its_own(self):
-        from sentier_brightway.fetch import load_packaged_manifest
+    def test_the_pins_are_this_repositorys_and_not_the_installers(self):
+        from bafu_brightway.pins import load_pins
 
-        own = {source.name: source.ref for source in load_packaged_manifest()}
+        own = {source.name: source.ref for source in load_pins()}
         _, record = data_root.pinned_sources()
         for entry in record:
             self.assertEqual(entry["commit"], own[entry["name"]], entry["name"])

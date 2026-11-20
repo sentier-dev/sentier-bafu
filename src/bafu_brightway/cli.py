@@ -1,4 +1,5 @@
-"""``sentier-brightway db|files|coverage|backtest``."""
+"""``bafu-brightway db|files|coverage|backtest``: the installer (sentier-brightway), with
+the countries' factors, the second linking, the flow terms of another source and a report."""
 
 from __future__ import annotations
 
@@ -10,9 +11,10 @@ import warnings
 from dataclasses import asdict
 from pathlib import Path
 
+from sentier_brightway.constants import DEFAULT_SOURCE, citation
+from sentier_brightway.fetch import FetchError
+
 from . import coverage, import_db, import_files, render
-from .constants import DEFAULT_SOURCE, citation
-from .fetch import FetchError
 
 # files.ExistingOutputError is a RuntimeError and FileNotFoundError/NotADirectoryError are
 # OSErrors, so the except tuple in main() covers them
@@ -72,7 +74,7 @@ def _add_report(parser: argparse.ArgumentParser) -> None:
 
 
 def _parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="sentier-brightway")
+    p = argparse.ArgumentParser(prog="bafu-brightway")
     sub = p.add_subparsers(dest="command", required=True)
 
     db = sub.add_parser(
@@ -241,7 +243,7 @@ def _progress_handler() -> logging.Handler:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv if argv is not None else sys.argv[1:])
-    logger = logging.getLogger("sentier_brightway")
+    logger = logging.getLogger("bafu_brightway")
     handler = _progress_handler()
     previous_level = logger.level
     logger.addHandler(handler)

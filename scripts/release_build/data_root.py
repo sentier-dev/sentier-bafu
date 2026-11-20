@@ -1,7 +1,7 @@
 """Fetch the data the Brightway installer pins, except the inventory, into a folder.
 
 The installer reads four data repositories. Its `sources.toml`
-(`src/sentier_brightway/sources.toml`) pins each file by commit and SHA-256. A build from a
+(`src/bafu_brightway/sources.toml`) pins each file by commit and SHA-256. A build from a
 release folder replaces the inventory and keeps the other three as pinned: the elementary
 flow terms, the EF 3.1 methods and the BAFU to EF 3.1 mapping.
 
@@ -39,9 +39,9 @@ def pin_record(sources: tuple) -> list[dict]:
 
 def pinned_sources() -> tuple[tuple, list[dict]]:
     """The three data sources to fetch, and the record of their pins."""
-    from sentier_brightway.fetch import load_packaged_manifest
+    from bafu_brightway.pins import load_pins
 
-    sources = tuple(s for s in load_packaged_manifest() if s.name != INVENTORY)
+    sources = tuple(s for s in load_pins() if s.name != INVENTORY)
     return sources, pin_record(sources)
 
 

@@ -481,7 +481,6 @@ MOJIBAKE_NAME = "WÃƒÂ¤rme, ab Kessel - CH"  # decodes to "Wärme, ab Kessel 
 def bafu_xlsx(tmp_path: Path) -> Path:
     """A tiny BAFU 'LCIA Results' workbook: 2 header rows, all 25 EF headers, 3 processes."""
     import openpyxl
-
     from sentier_brightway.backtest.categories import CATEGORIES
 
     wb = openpyxl.Workbook()

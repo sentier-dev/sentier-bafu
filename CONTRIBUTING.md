@@ -11,7 +11,7 @@ Run the checks that fit your change before you open a pull request. This section
 The checks use three environments. All of them need [uv](https://docs.astral.sh/uv/).
 
 - The records, the site and their tests need Python 3.12 and the `markdown` package. They run outside the package project, with `uv run --no-project --python 3.12`.
-- The patch tool and the Brightway installer are the two packages of this repository's project (`src/bafu_community_fixes`, `src/sentier_brightway`). They share Python 3.14, one `pyproject.toml` and one lock. `uv sync --locked` installs the patch tool alone, which is all it needs. `uv sync --locked --extra brightway` adds what the installer needs (pandas, bw2data and others).
+- This repository's project has two packages: the patch tool (`src/bafu_community_fixes`) and what the build adds to the Brightway installer (`src/bafu_brightway`). They share Python 3.14, one `pyproject.toml` and one lock. `uv sync --locked` installs the patch tool alone, which is all it needs. `uv sync --locked --extra brightway` adds the installer itself, [sentier-brightway](https://github.com/sentier-dev/sentier-brightway), pinned by commit, and what it needs (pandas, bw2data and others). This repository ships no copy of the installer.
 - The build of a Brightway database uses that environment with the extra, and makes one more for sentier-importers at the version pinned in `scripts/release_build/pins.toml`.
 
 ### Records, site and unit tests
@@ -57,7 +57,7 @@ uv sync --locked --extra brightway
 uv run --no-sync pytest installer-tests
 ```
 
-- `src/sentier_brightway` is the code that writes the Brightway databases and the EF 3.1 methods ([docs/brightway-installer.md](docs/brightway-installer.md)). Its tests are in `installer-tests/` and need the `brightway` extra, so `uv run pytest` alone does not run them.
+- `src/bafu_brightway` calls the installer and adds the countries' factors, the second linking, the build's own data pins and a report ([docs/brightway-installer.md](docs/brightway-installer.md)). Its tests are in `installer-tests/` and need the `brightway` extra, so `uv run pytest` alone does not run them. A change to the installer itself is a pull request to sentier-brightway; the pin in `pyproject.toml` then moves.
 - The tests build a made-up data root. They need none of BAFU's data and download nothing.
 - `uv sync --locked` without the extra removes the installer's dependencies again. With the extra installed, the patch tool's commands above run as before.
 

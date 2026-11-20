@@ -1,10 +1,19 @@
-"""What got linked, what did not, and the citation the user must carry."""
+"""What got linked, what did not, and the citation the user must carry.
+
+The counts of the installer (``sentier_brightway.report.Coverage``), and beside them what
+this package adds: the flows that name a country, and how the flows were linked."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .constants import BIOSPHERE_DB, DEFAULT_SOURCE, citation, inventory_db, residual_db
+from sentier_brightway.constants import (
+    BIOSPHERE_DB,
+    DEFAULT_SOURCE,
+    citation,
+    inventory_db,
+    residual_db,
+)
 
 
 @dataclass(frozen=True)

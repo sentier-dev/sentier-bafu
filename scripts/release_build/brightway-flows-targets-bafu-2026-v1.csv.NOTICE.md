@@ -1,8 +1,9 @@
 # Notice for `brightway-flows-targets-bafu-2026-v1.csv`
 
-This file is derived from the Brightway Flows database, release 1.1.0
+This file is derived from the Brightway Flows database: from two files of release 1.1.0
 (https://doi.org/10.5281/zenodo.23554066), and from the crosswalk
-`brightway-flows-crosswalk-bafu-2026-v1.csv`, which is itself derived from Brightway Flows.
+`brightway-flows-crosswalk-bafu-2026-v1.csv`, which is derived from release 1.0.0
+(https://doi.org/10.5281/zenodo.22857950).
 
 Brightway Flows is made available under the Open Database License 1.0
 (https://opendatacommons.org/licenses/odbl/1-0/). So is this file, and so is every copy of
