@@ -537,6 +537,14 @@ class BuildRecords(unittest.TestCase):
             len(build_release.FLOW_LINKS.read_text().splitlines()),
             len(crosswalk.read_text().splitlines()),
         )
+        # the file is under the Open Database License, not the repository's licence: the
+        # notice that says so is beside it, under the name the installer looks for
+        notice = build_release.FLOW_LINKS_NOTICE
+        self.assertEqual(notice.name, build_release.FLOW_LINKS.name + ".NOTICE.md")
+        text = notice.read_text()
+        self.assertIn("Open Database License 1.0", text)
+        self.assertIn("https://opendatacommons.org/licenses/odbl/1-0/", text)
+        self.assertIn("https://doi.org/10.5281/zenodo.23554066", text)
 
     def test_the_comparison_refuses_two_builds_of_different_linkings(self):
         with tempfile.TemporaryDirectory() as temp:

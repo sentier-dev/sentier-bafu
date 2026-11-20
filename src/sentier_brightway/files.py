@@ -111,6 +111,11 @@ def _manifest(
     }
 
 
+def notice_of(path: Path) -> Path:
+    """Where the notice of a file is kept: beside it, as ``<name>.NOTICE.md``."""
+    return path.with_name(path.name + ".NOTICE.md")
+
+
 def write_files(
     result: BuildResult,
     data_root: Path,
@@ -124,7 +129,8 @@ def write_files(
     """Write the output folder. ``include_nomenclature`` must match the value ``result`` was
     built with; it is recorded in the manifest together with the packages actually applied.
     With ``flow_links`` (the file ``result`` was linked through) that file is kept beside
-    the output in place of the mapping folder, and no package was applied."""
+    the output in place of the mapping folder, and no package was applied. A notice kept
+    beside the file (``<name>.NOTICE.md``: the terms the file is under) goes with the copy."""
     bridge_packages = () if flow_links else applied_packages(data_root, include_nomenclature)
     out_dir = _prepare(out_dir, overwrite)
     registry = build_registry(result)
@@ -133,6 +139,9 @@ def write_files(
         kept = out_dir / MAPPINGS_DIR / "brightway-flows"
         kept.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(flow_links, kept / Path(flow_links).name)
+        notice = notice_of(Path(flow_links))
+        if notice.is_file():
+            shutil.copyfile(notice, kept / notice.name)
     else:
         _copy_mappings(data_root, out_dir)
     if datapackages:

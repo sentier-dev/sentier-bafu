@@ -75,6 +75,8 @@ LINKINGS = ("sentier-mappings", "brightway-flows")
 # The name under which a build of the second linking keeps the file it was linked through,
 # so that the comparison reads the same file (release_build/compare_builds.py)
 KEPT_FLOW_LINKS = "flow-links.csv"
+NOTICE_SUFFIX = ".NOTICE.md"  # as `notice_of` in the installer's files.py
+FLOW_LINKS_NOTICE = FLOW_LINKS.with_name(FLOW_LINKS.name + NOTICE_SUFFIX)
 # Where sentier-importers' registry expects BAFU's release, below its data root
 IMPORTER_INPUT = Path("sources") / "bafu-2026" / "BAFU-2026 v1_ecoSpold v1.zip"
 IMPORTER_SOURCES = ("bafu-processes", "bafu-exchanges")
@@ -344,6 +346,11 @@ def build(args: argparse.Namespace) -> int:
             raise BuildError(f"{FLOW_LINKS} is not there; the Brightway Flows linking needs it")
         kept = out / KEPT_FLOW_LINKS
         shutil.copyfile(FLOW_LINKS, kept)
+        # The file is under the Open Database License; its notice goes with every copy,
+        # and the installer passes it on with the copy it keeps in a files export.
+        if not FLOW_LINKS_NOTICE.is_file():
+            raise BuildError(f"{FLOW_LINKS_NOTICE} is not there; the copy of the links needs it")
+        shutil.copyfile(FLOW_LINKS_NOTICE, out / (KEPT_FLOW_LINKS + NOTICE_SUFFIX))
         flow_links = ["--flow-links", str(kept)]
     record = {
         "label": paths["label"],

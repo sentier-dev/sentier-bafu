@@ -513,7 +513,10 @@ No factor is read from Brightway Flows. What the installer needs beside the cros
 `scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`, written by
 `scripts/build_brightway_flows_targets.py` from two files of Brightway Flows 1.1.0 on Zenodo,
 checked by their MD5. The file is derived from Brightway Flows and is under the Open Database
-License 1.0, like the crosswalk.
+License 1.0, like the crosswalk. The notice that says so is beside it
+(`brightway-flows-targets-bafu-2026-v1.csv.NOTICE.md`). A build of the second linking keeps
+the file as `flow-links.csv` with the notice beside it, and the installer copies both into
+`mappings/brightway-flows/` of a files export.
 
 A flow that BAFU keeps in the compartment `economic issues` is an entry of account and no
 exchange with the environment, and is not linked: `Water, embodied in product, CH` and the
