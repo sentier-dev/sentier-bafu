@@ -42,11 +42,28 @@ LISTED = 50  # moved datasets listed per method in the output
 # else shows up as an unexplained row instead of being attributed by assumption. A step that
 # is not listed here (a new patch) needs no entry: what it can explain is taken from the run
 # summary, which counts the fields it changed in this run (`step_fields`).
+# `rows` is the kind of exchange a step changes (the importer's `flow_type`): a patch of an
+# input's amount or supplier can explain a technosphere row and no other, a patch of a
+# flow's name or compartment an elementary exchange and no other. Without `rows`, any kind.
+#
+# What this table can and can't say: a changed row counts as explained when a step that is
+# recorded on the row's DATASET changes that kind of field on that kind of row. The patch
+# run records which datasets a step changed, not which exchange, so two changed amounts in
+# one dataset that patch 0001 touched are both put down to 0001. The attribution is by
+# dataset, not by exchange.
 STEP_FIELDS = {
-    "0001-strawberry-polyethylene-disposal": {"exchange": {"amount"}, "process": set()},
-    "0002-supplier-locations": {"exchange": {"location"}, "process": set()},
-    "0007-flow-names": {"exchange": {"flow", "name"}, "process": set()},
-    "0008-flow-compartments": {"exchange": {"flow"}, "process": set()},
+    "0001-strawberry-polyethylene-disposal": {
+        "exchange": {"amount"},
+        "process": set(),
+        "rows": {"technosphere"},
+    },
+    "0002-supplier-locations": {
+        "exchange": {"location"},
+        "process": set(),
+        "rows": {"technosphere"},
+    },
+    "0007-flow-names": {"exchange": {"flow", "name"}, "process": set(), "rows": {"biosphere"}},
+    "0008-flow-compartments": {"exchange": {"flow"}, "process": set(), "rows": {"biosphere"}},
     "location-codes": {"exchange": {"location"}, "process": {"location"}},
 }
 # What a changed attribute of an exchange in the release files means in the importer's
@@ -94,6 +111,14 @@ RELEASE_NAME_COLUMNS = ("process_id", "source", "source_version")
 # Changes that can move a score. A name or a declared location alone does not: technosphere
 # inputs are linked by dataset number, elementary flows by their identity.
 SCORE_RELEVANT = {"flow", "amount", "unit", "kind"}
+
+
+#: What "explained" means, for the comparison's record and for whoever words a claim on it.
+ATTRIBUTION = (
+    "A changed row counts as explained when a step recorded on its dataset changes that kind "
+    "of field on that kind of exchange. The attribution is by dataset, not by exchange: the "
+    "patch run records the datasets a step changed, not the exchanges."
+)
 
 
 class CompareError(Exception):
@@ -147,6 +172,12 @@ def explain(
             return single
     together = set().union(*known.values()) if known else set()
     return sorted(known) if groups <= together else []
+
+
+def may_change(step: str, kinds: set[str], fields: dict[str, dict] | None = None) -> bool:
+    """Whether `step` changes exchanges of these kinds at all (`rows` in the table of steps)."""
+    rows = ((STEP_FIELDS if fields is None else fields).get(step) or {}).get("rows")
+    return rows is None or kinds <= rows
 
 
 def downstream(seeds: set[str], consumers: dict[str, set[str]]) -> set[str]:
@@ -285,7 +316,14 @@ def compare_rows(
 
     by_step, unexplained, rows = defaultdict(Counter), [], []
     for row in changed.itertuples(index=False):
-        recorded = [step for step in steps.get(row.process_id, []) if step != layer_step]
+        kinds = {
+            kind for kind in (row.flow_type_before, row.flow_type_after) if isinstance(kind, str)
+        }
+        recorded = [
+            step
+            for step in steps.get(row.process_id, [])
+            if step != layer_step and may_change(step, kinds, fields)
+        ]
         if declared.get((row.process_id, row.position)) == (row.flow_before, row.flow_after):
             found = explain(set(row.groups), [layer_step], "exchange", fields)
         else:
@@ -545,16 +583,30 @@ def compare_scores(base_scores, cand_scores, seeds, consumers, names: dict[str, 
 
     if list(base_scores.columns) != list(cand_scores.columns):
         raise CompareError("The two builds were scored with different methods")
-    codes = sorted(set(base_scores.index) & set(cand_scores.index))
+    only_before = set(base_scores.index) - set(cand_scores.index)
+    only_after = set(cand_scores.index) - set(base_scores.index)
+    if only_before or only_after:
+        # A dataset scored on one side only would be left out of the comparison without a word.
+        raise CompareError(
+            f"The two builds did not score the same datasets: {len(only_before)} only in the "
+            f"first, {len(only_after)} only in the second"
+        )
+    codes = sorted(base_scores.index)
     base_scores, cand_scores = base_scores.loc[codes], cand_scores.loc[codes]
     closures: dict[frozenset, set[str]] = {}
     out, unexplained_total = [], 0
     for method in base_scores.columns:
         before = base_scores[method].to_numpy(dtype=float)
         after = cand_scores[method].to_numpy(dtype=float)
+        # A score that is not a number, or not finite, on either side has moved, unless it
+        # is the same on both: `nan > tolerance` is false, and such a score would pass as
+        # unchanged. It is put first, with a difference of infinity.
+        finite = np.isfinite(before) & np.isfinite(after)
+        same = (np.isnan(before) & np.isnan(after)) | (before == after)
         scale = np.maximum(np.abs(before), np.abs(after))
         with np.errstate(invalid="ignore", divide="ignore"):
             relative = np.where(scale == 0, 0.0, np.abs(after - before) / scale)
+        relative = np.where(finite, relative, np.where(same, 0.0, np.inf))
         moved_index = np.flatnonzero(relative > MOVE_TOLERANCE)
         moved = {codes[i] for i in moved_index}
         reach = {}
@@ -574,10 +626,13 @@ def compare_scores(base_scores, cand_scores, seeds, consumers, names: dict[str, 
                 "code": codes[i],
                 "name": names.get(codes[i], {}).get("name"),
                 "location": names.get(codes[i], {}).get("location"),
-                "before": float(before[i]),
-                "after": float(after[i]),
+                # JSON has no word for a score that is not finite: it is written as text.
+                "before": float(before[i]) if np.isfinite(before[i]) else str(before[i]),
+                "after": float(after[i]) if np.isfinite(after[i]) else str(after[i]),
                 "change_percent": (
-                    None if before[i] == 0 else float((after[i] - before[i]) / abs(before[i]) * 100)
+                    None
+                    if before[i] == 0 or not finite[i]
+                    else float((after[i] - before[i]) / abs(before[i]) * 100)
                 ),
                 "steps": attribution[codes[i]],
             }
@@ -660,6 +715,7 @@ def compare(baseline: Path, candidate: Path) -> dict:
         "status": "failed" if errors else "passed",
         "errors": errors,
         "what_a_step_can_explain": {
+            "attribution": ATTRIBUTION,
             "declared_in_the_comparison": sorted(STEP_FIELDS),
             "taken_from_the_run_summary": sorted(
                 step

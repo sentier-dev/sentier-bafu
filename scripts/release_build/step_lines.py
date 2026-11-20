@@ -81,7 +81,7 @@ def comparison(file: Path) -> list[str]:
     lines = [
         f"  {section['exchange_rows_compared']:,} exchange rows compared with "
         f"{section['baseline']}: {section['exchange_rows_changed']:,} changed, "
-        f"{section['rows_no_step_explains']:,} that no step explains",
+        f"{section['rows_no_step_explains']:,} that no step recorded on their dataset explains",
     ]
     by_step = section["rows_changed_by_step"]
     if by_step:

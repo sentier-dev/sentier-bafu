@@ -57,7 +57,7 @@ process; peak memory is the largest resident size of the step's process tree:
 | patched build | 300 | 1.5 GB | 14 import fixes and 11 patches; 11,601 datasets changed; audit passed without a finding |
 | written files | 7 | 0.1 GB | 11,947 files valid EcoSpold 1, and the ones the summary describes |
 | patch run | under 1 | | every patch changed as much as in the earlier run |
-| comparison | 3 | 1.1 GB | 188 of 420,063 exchange rows differ, each explained by a step; in each of 25 methods the scores of three datasets move, all three by patch 0001 |
+| comparison | 3 | 1.1 GB | 188 of 420,063 exchange rows differ, each explained by a step recorded on its dataset (the attribution is by dataset, not by exchange); in each of 25 methods the scores of three datasets move, all three by patch 0001 |
 | exports | 188 | 3.0 GB | four formats written and read back. In that run no difference was found; the read-back did not yet compare the direction of an exchange, and the ILCD package was only counted. Since 20 November 2026 the openLCA and ILCD files are held back ([exports.md](exports.md)) |
 | the whole command | 615 | 3.2 GB | |
 
