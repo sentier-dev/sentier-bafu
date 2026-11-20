@@ -881,7 +881,9 @@ def fix_builds(args: argparse.Namespace) -> int:
     summary = json.loads(args.summary.read_text())
     comparison = json.loads(args.comparison.read_text())
     try:
-        planned = fixes_account.plan(summary, comparison)
+        # the steps recorded on each dataset, beside the run summary in the patched build
+        recorded = fixes_account.compare.read_steps(args.summary.resolve().parent)
+        planned = fixes_account.plan(summary, comparison, recorded)
     except fixes_account.FixesError as error:
         raise BuildError(str(error)) from None
     out = args.out.resolve()
@@ -911,11 +913,22 @@ def fix_builds(args: argparse.Namespace) -> int:
 
     for planned_build in planned["builds"]:
         print(f"  {planned_build['label']}", flush=True)
+    for patch, others in planned["built_although_no_reach"].items():
+        print(
+            f"  built alone although the comparison gives it no reach: {patch}, which changed "
+            f"a dataset that {', '.join(others)} changed too",
+            flush=True,
+        )
     for patch in planned["not_built"]:
         print(f"  not built alone: {patch}, whose changes reach no result", flush=True)
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
         built = list(pool.map(one, planned["builds"]))
-    index = {"builds": built, "not_built": planned["not_built"], "reach": planned["reach"]}
+    index = {
+        "builds": built,
+        "not_built": planned["not_built"],
+        "reach": planned["reach"],
+        "built_although_no_reach": planned["built_although_no_reach"],
+    }
     (out / fixes_account.INDEX).write_text(json.dumps(index, indent=2) + "\n")
     failed = [b["id"] for b in built if b["status"] != "completed"]
     for b in built:

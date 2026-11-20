@@ -22,7 +22,10 @@ base. This writes that file:
   set that holds it is estimated.
 - **The patched copy, with every fix,** is a built set, and the chain's state `after`. The checks of
   sentier-diagnostics hold it to that state and to the sum of the effects, item by item: it
-  is the test of every claim above.
+  is the test of every claim above. Two conditions: the sum is checked only while no pair
+  lies in the set (two patches on one supply chain do not add up, and no pair is built, so
+  nothing holds such a set), and every value is judged, however small (the chain is built
+  without a floor, and this file takes its floors from the chain).
 
 Noise is not measured: no build is made twice. The file is local, as the matrix is: it holds
 a result for every dataset, so it never leaves the machine that built it. The run prints
@@ -77,14 +80,44 @@ def reached(comparison: dict) -> dict[str, int]:
     return out
 
 
-def plan(summary: dict, comparison: dict) -> dict:
+def changes_a_score_field(step: dict) -> bool:
+    """Whether the patch tool's own record of a step says it changed a field of an exchange
+    that a score is computed from (an amount, a flow, a unit, the kind of exchange)."""
+    changed = compare.derived_fields(step.get("fields") or {})["exchange"]
+    return bool(changed & compare.SCORE_RELEVANT)
+
+
+def hidden_behind(patches: list[dict], reach: dict[str, int], recorded: dict | None) -> dict:
+    """Patches the comparison gives no reach although they may have one: `{patch: the patches
+    recorded on a dataset it changed too}`.
+
+    The comparison attributes a changed row to the narrowest patch that fits it, by dataset.
+    Where two patches changed one dataset, the wider one can so be left without a row, and
+    without a reach, although it changed a field a score is computed from. Such a patch is
+    built alone as well: its effect is then measured and not declared empty."""
+    by_patch: dict[str, set[str]] = {}
+    for found in (recorded or {}).values():
+        here = [p["id"] for p in patches if p["id"] in found]
+        for patch in here:
+            by_patch.setdefault(patch, set()).update(other for other in here if other != patch)
+    return {
+        p["id"]: sorted(by_patch[p["id"]])
+        for p in patches
+        if not reach.get(p["id"], 0) and by_patch.get(p["id"]) and changes_a_score_field(p)
+    }
+
+
+def plan(summary: dict, comparison: dict, recorded: dict[str, list[str]] | None = None) -> dict:
     """What `fix-builds` builds: the import fixes alone, and each patch with a reach alone with
-    the import fixes; and the patches it leaves out, each with why."""
+    the import fixes; and the patches it leaves out, each with why. `recorded` are the steps
+    recorded on each dataset of the build with every fix (`compare.read_steps`): with it, a
+    patch that may be hidden behind another (`hidden_behind`) is built alone too."""
     imports, patches = steps_of(summary)
     if not imports and not patches:
         raise FixesError("the run applied no import fix and no patch: there is nothing to measure")
     reach = reached(comparison)
     ids = [p["id"] for p in patches]
+    hidden = hidden_behind(patches, reach, recorded)
     builds = [
         {
             "id": IMPORT_FIXES,
@@ -96,7 +129,7 @@ def plan(summary: dict, comparison: dict) -> dict:
     ]
     not_built = []
     for patch in ids:
-        if reach.get(patch, 0):
+        if reach.get(patch, 0) or patch in hidden:
             builds.append(
                 {
                     "id": patch,
@@ -108,7 +141,12 @@ def plan(summary: dict, comparison: dict) -> dict:
             )
         else:
             not_built.append(patch)
-    return {"builds": builds, "not_built": not_built, "reach": {p: reach.get(p, 0) for p in ids}}
+    return {
+        "builds": builds,
+        "not_built": not_built,
+        "reach": {p: reach.get(p, 0) for p in ids},
+        "built_although_no_reach": hidden,
+    }
 
 
 # ------------------------------------------------------------------------ the file
@@ -200,13 +238,15 @@ def pairs_of(built: list[str], reach: dict[str, set], changes: dict[str, dict]) 
     return out
 
 
+# A text of the format holds 600 characters at most.
 METHOD = (
-    "Each patch that changes a row a score is computed from, in the build with every fix, was "
-    "built alone with the import fixes, and its effect measured against their build. The "
-    "others change no such row there, are not built alone, and have no effect. Two patches "
-    "are a pair where the datasets their changes reach overlap and their changes meet; no "
-    "pair is built, so none is sized. The patched copy, with every fix, is built and held to "
-    "the sum of the effects."
+    "Each patch that changes a row a score is computed from, or that may be hidden behind "
+    "another patch on one dataset, was built alone with the import fixes and measured "
+    "against their build. The others are not built alone and have no effect. Two patches are "
+    "a pair where what they reach overlaps and their changes meet; no pair is built, so none "
+    "is sized. The patched copy is held to the sum of the effects, value by value and "
+    "without a floor, while no pair lies in it. A set that holds a pair is held to no sum, "
+    "and nothing checks it."
 )
 
 
