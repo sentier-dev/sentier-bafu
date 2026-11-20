@@ -9,6 +9,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -567,7 +568,13 @@ class BuildRecords(unittest.TestCase):
         text = notice.read_text()
         self.assertIn("Open Database License 1.0", text)
         self.assertIn("https://opendatacommons.org/licenses/odbl/1-0/", text)
-        self.assertIn("https://doi.org/10.5281/zenodo.23554066", text)
+        # the release the file is built from, as the script that builds it pins it, and the
+        # release of the crosswalk it is built on
+        targets = (REPOSITORY / "scripts" / "build_brightway_flows_targets.py").read_text()
+        crosswalk = (REPOSITORY / "scripts" / "build_brightway_flows_data.py").read_text()
+        for script, release in ((targets, "1.1.0"), (crosswalk, "1.0.0")):
+            (doi,) = set(re.findall(r'ZENODO_DOI = "(10\.5281/zenodo\.\d+)"', script))
+            self.assertIn(f"release {release}\n(https://doi.org/{doi})", text)
 
     def test_the_comparison_refuses_two_builds_of_different_linkings(self):
         with tempfile.TemporaryDirectory() as temp:
