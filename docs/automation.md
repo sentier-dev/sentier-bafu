@@ -425,6 +425,20 @@ BAFU's full release. Not checked, because it needs GitHub:
 
 ## 8. First run
 
+On 20 November 2026 none of the settings 1 to 4 below was in place on
+`sentier-dev/sentier-bafu`. They can be read without changing anything:
+
+```sh
+gh api repos/sentier-dev/sentier-bafu/actions/permissions/workflow   # 1: can_approve_pull_request_reviews
+gh api repos/sentier-dev/sentier-bafu/branches/main/protection       # 2: 404 means not protected
+gh api repos/sentier-dev/sentier-bafu/rulesets                       # 2 and 3: [] means no rule
+gh api repos/sentier-dev/sentier-bafu --jq .delete_branch_on_merge   # 4
+```
+
+Until setting 1 is ticked, the intake pushes its branch and is refused when it opens the pull
+request. It then says so once on the issue, names the branch, and the job fails; a maintainer
+opens the pull request from that branch by hand, or ticks the setting and comments `/record`.
+
 Before merging:
 
 1. **Settings → Actions → General → Workflow permissions:** tick "Allow GitHub Actions to create
