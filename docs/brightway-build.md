@@ -512,6 +512,22 @@ No factor is read from Brightway Flows. What the installer needs beside the cros
 checked by their MD5. The file is derived from Brightway Flows and is under the Open Database
 License 1.0, like the crosswalk.
 
+A flow that BAFU keeps in the compartment `economic issues` is an entry of account and no
+exchange with the environment, and is not linked: `Water, embodied in product, CH` and the
+same for ES, KE, MX and PE (13 exchanges). The crosswalk ends them on the water flow, where
+they would take a water use factor. Measured on 20 November 2026 on the twelve datasets that
+these five flows move and that BAFU published a result for: without a factor, all twelve are
+closest to BAFU's published water use (eight within 0.1 %, the largest difference 1.25 %);
+with the factor without a location the largest difference is 173 %, with the country's own
+factor 5.6 %. The mapping of sentier-mappings does not link them either. The numbers of
+15 November below were measured before this: with it, 2,672 flows and 293,623 exchanges are
+linked, and three flows gain a factor, not eight.
+
+A linked flow that the mapping does not hold, on a flow that has factors of single
+countries, may name a country that nobody states. No country is read from a flow's name;
+the install report names such flows. BAFU:2026 v1 has none once the five above are left
+unlinked.
+
 A flow of EF 3.1 that the pinned flow terms and methods do not hold (38 of BAFU's flows end
 on one) gets a node with the name the link gives it. A node of a flow that is reached from
 several of BAFU's flows says where the flow goes as far as those flows agree.

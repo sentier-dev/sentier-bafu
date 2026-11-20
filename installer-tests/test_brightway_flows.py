@@ -256,6 +256,59 @@ def test_a_flow_the_crosswalk_does_not_hold_stays_unlinked(data_root):
     assert sorted(links.report.not_in_crosswalk) == ["Heat, waste", "Uranium-238"]
 
 
+def test_an_entry_of_account_is_not_linked_and_the_report_names_it(data_root):
+    """BAFU keeps `Water, embodied in product, CH` in the compartment `economic issues`: an
+    entry of account, no exchange with the environment. The crosswalk holds it, and linked
+    it would take a water use factor."""
+    source = load_source_flows(data_root).copy()
+    source["categories"] = [
+        ("economic issues", "unspecified") if code == B1 else categories
+        for code, categories in zip(source["code"], source["categories"], strict=True)
+    ]
+    content = [row("Carbon dioxide, fossil", "economic issues", "unspecified", "kg", E1)]
+    content += rows()[1:]
+    targets = {tuple(r[k] for k in bf.KEY): r for r in content}
+    assert ("Carbon dioxide, fossil", "economic issues", "unspecified", "kg") in targets
+    links = bf.link(
+        load_inventory(data_root),
+        source,
+        load_ef_flows(data_root),
+        load_methods(data_root),
+        targets,
+    )
+    assert B1 not in links.bridge and B2 in links.bridge
+    assert links.report.accounting == ("Carbon dioxide, fossil",)
+    assert links.report.not_in_crosswalk == ()
+    assert (
+        "  1 not linked: entries of account in the source, no exchange with the environment "
+        "(Carbon dioxide, fossil)"
+    ) in links.report.lines()
+    # the same flow in a compartment of the environment is linked
+    assert B1 in linked(data_root, rows()).bridge
+    assert linked(data_root, rows()).report.accounting == ()
+
+
+def test_a_linked_flow_whose_country_nobody_states_is_named(data_root):
+    """The made-up climate method has a factor of DE for E1. A flow linked to E1 that the
+    mapping does not hold may name a country, and the mapping is the one place that says so."""
+    assert dict(load_methods(data_root)[0].located) == {(E1, "DE"): 2.0}
+    not_held = linked(data_root, rows(), in_mapping=frozenset({B2}))
+    assert not_held.report.country_not_stated == ("Carbon dioxide, fossil",)
+    assert any(
+        line.startswith("  1 linked to a flow that has factors of single countries")
+        and line.endswith("(Carbon dioxide, fossil)")
+        for line in not_held.report.lines()
+    )
+    # held by the mapping: the mapping says whether it names a country
+    assert linked(data_root, rows(), in_mapping=frozenset({B1})).report.country_not_stated == ()
+    # the uranium flow is not held either, and its target has no factor of a country
+    assert linked(data_root, rows(), in_mapping=frozenset()).report.country_not_stated == (
+        "Carbon dioxide, fossil",
+    )
+    # no mapping to ask: nothing is said
+    assert linked(data_root, rows()).report.country_not_stated == ()
+
+
 def test_assemble_links_the_exchanges_and_converts_the_amounts(data_root, links_file):
     result = sb.assemble(data_root, flow_links=links_file)
     inventory, residual = inventory_db(DEFAULT_SOURCE), residual_db(DEFAULT_SOURCE)
