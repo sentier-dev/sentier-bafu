@@ -38,8 +38,9 @@ class Skip(Exception):
 
 
 def run(copy, *args):
-    return subprocess.run([sys.executable, str(copy / "scripts/community.py"), "--root", str(copy), *args],
-                          capture_output=True, text=True)
+    # The steps write dates far ahead; the commands refuse a date after the day they are told.
+    return subprocess.run([sys.executable, str(copy / "scripts/community.py"), "--root", str(copy),
+                           "--today", "2099-12-31", *args], capture_output=True, text=True)
 
 
 def must(copy, *args):
