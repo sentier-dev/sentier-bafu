@@ -43,6 +43,12 @@ LABELS = REPOSITORY / "scripts" / "release_build" / "export_labels.toml"
 sys.path.insert(0, str(REPOSITORY / "scripts"))
 
 
+def build_release_flow_links() -> Path:
+    import build_release
+
+    return build_release.FLOW_LINKS
+
+
 def reuse() -> list[str]:
     options = []
     for flag, variable in (
@@ -78,6 +84,13 @@ class WholePath(unittest.TestCase):
         command += ["--published-results", str(cls.root / "no-such-workbook.xlsx")]
         cls.done = subprocess.run([*command, *reuse()], capture_output=True, text=True)
         cls.contribution = cls.out / "contributions" / LAYER.lower()
+        # the whole path once more, linked through Brightway Flows (no contribution)
+        cls.linked_run = cls.root / "linked-run"
+        command = [sys.executable, str(ENTRY), "release", str(release), str(cls.linked_run)]
+        command += ["--sample", str(sample), "--labels", str(labels), "--no-layers"]
+        command += ["--partial-release", "--linking", "brightway-flows"]
+        cls.linked_done = subprocess.run([*command, *reuse()], capture_output=True, text=True)
+        cls.linked = cls.linked_run / "provider"
 
     @classmethod
     def tearDownClass(cls):
@@ -114,6 +127,121 @@ class WholePath(unittest.TestCase):
         for step in steps:  # every step ran in its own process, timed and measured
             self.assertGreaterEqual(step["seconds"], 0)
             self.assertGreater(step["peak_memory_mb"], 0)
+
+    def test_a_build_linked_through_brightway_flows_runs_and_says_so(self):
+        done = self.linked_done
+        self.assertEqual(done.returncode, 0, done.stdout[-3000:] + done.stderr[-2000:])
+        record = json.loads((self.linked / "build.json").read_text())
+        self.assertEqual((record["status"], record["linking"]), ("completed", "brightway-flows"))
+        self.assertEqual(self.load("provider", "build.json")["linking"], "sentier-mappings")
+        report = "\n".join(record["coverage"])
+        self.assertIn("Linked through Brightway Flows (the links of patch 0010): 5/5 flows", report)
+        self.assertIn("1 linked with a conversion the release states", report)
+        steps = json.loads((self.linked / "build-steps.json").read_text())
+        self.assertIn("through the links of patch 0010", steps[0]["description"])
+
+    def test_the_two_linkings_differ_where_the_conversion_differs_and_nowhere_else(self):
+        """The made-up release has five elementary flows, all on flows of EF 3.1 both ways.
+        One is natural gas in Nm3, counted in MJ by EF 3.1: the mapping states 35.98 MJ per
+        Nm3 and Brightway Flows 36.0. So fossil resource use differs by exactly that ratio
+        wherever gas is used, and every other score is the same."""
+        with (self.linked / "audit" / "scores.csv").open() as stream:
+            linked = {row["code"]: row for row in csv.DictReader(stream)}
+        with (self.out / "provider" / "audit" / "scores.csv").open() as stream:
+            mapped = {row["code"]: row for row in csv.DictReader(stream)}
+        self.assertEqual(set(linked), set(mapped))
+        methods = [column for column in next(iter(mapped.values())) if column.startswith("ef-3.1:")]
+        self.assertEqual(len(methods), 25)
+        moved = set()
+        for code, row in mapped.items():
+            for method in methods:
+                a, b = float(row[method]), float(linked[code][method])
+                if abs(a - b) > 1e-9 * max(1.0, abs(a)):
+                    moved.add((code, method))
+                    self.assertAlmostEqual(b / a, 36.0 / 35.98, places=6, msg=f"{code} {method}")
+        self.assertTrue(moved)
+        self.assertEqual({method for _, method in moved}, {FOSSILS})
+        self.assertIn("syn-gas", {code for code, _ in moved})
+
+    def test_the_whole_path_runs_under_the_second_linking(self):
+        """Both builds, the comparison and the exports with their read-back: the same steps
+        as under the mapping, and nothing of it may be kept under a tag."""
+        done = self.linked_done
+        self.assertEqual(done.returncode, 0, done.stdout[-3000:] + done.stderr[-2000:])
+        manifest = json.loads((self.linked_run / "manifest.json").read_text())
+        self.assertEqual(manifest["status"], "completed")
+        self.assertEqual(
+            {step["name"]: step["status"] for step in manifest["steps"]},
+            dict.fromkeys(
+                ("provider build", "patched build", "written files", "patch run")
+                + ("comparison", "exports"),
+                "completed",
+            ),
+        )
+        for name in ("provider", "patched"):
+            self.assertEqual(manifest["brightway"][name]["linking"], "brightway-flows")
+            self.assertEqual(manifest["brightway"][name]["audit"]["status"], "passed")
+        blocked = [line for line in manifest["not_releasable"] if "own linking" in line]
+        self.assertEqual(len(blocked), 2)
+        # the comparison explains every difference with the links that were installed
+        comparison = json.loads((self.linked_run / "comparison.json").read_text())
+        self.assertEqual((comparison["status"], comparison["errors"]), ("passed", []))
+        self.assertEqual(comparison["linking"], "brightway-flows")
+        # the build keeps the file it was linked through, and names the one it was copied from
+        record = json.loads((self.linked_run / "patched" / "build.json").read_text())
+        kept = self.linked_run / "patched" / "flow-links.csv"
+        self.assertEqual(kept.read_bytes(), build_release_flow_links().read_bytes())
+        # the file is under the Open Database License: its notice is beside the copy
+        notice = kept.with_name("flow-links.csv.NOTICE.md")
+        self.assertIn("Open Database License 1.0", notice.read_text())
+        self.assertEqual(record["install"]["flow_links"]["file"], build_release_flow_links().name)
+        self.assertEqual(record["install"]["flow_terms_of"], "bafu-2026")
+        exports = json.loads(
+            (self.linked_run / "exports" / "patched" / "manifest.json").read_text()
+        )
+        self.assertEqual(exports["status"], "completed")
+        # under the mapping the same run is not held back for its linking
+        mapped = self.load("manifest.json")
+        self.assertEqual([line for line in mapped["not_releasable"] if "own linking" in line], [])
+        self.assertEqual(mapped["brightway"]["patched"]["linking"], "sentier-mappings")
+        self.assertEqual(self.load("comparison.json")["linking"], "sentier-mappings")
+
+    def test_the_comparison_refuses_two_builds_of_different_linkings(self):
+        command = [sys.executable, str(ENTRY), "compare", str(self.out / "provider")]
+        command += [str(self.linked), "--out", str(self.root / "refused.json")]
+        done = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("through brightway-flows", done.stderr)
+        self.assertFalse((self.root / "refused.json").exists())
+
+    def test_the_measurement_of_the_two_linkings_runs_on_a_data_root(self):
+        import build_release
+
+        venvs = os.environ.get("RELEASE_BUILD_VENVS")
+        tool = build_release.Project(Path(venvs) if venvs else None)
+        out = self.root / "linkings.json"
+        command = tool.command(
+            *("python", str(REPOSITORY / "scripts" / "compare_flow_linkings.py")),
+            *("--data-root", str(self.out / "provider" / "data-root")),
+            *("--work", str(self.root / "linkings"), "--out", str(out)),
+        )
+        done = subprocess.run(
+            command, capture_output=True, text=True, env={**os.environ, **tool.env()}
+        )
+        self.assertEqual(done.returncode, 0, done.stdout[-2000:] + done.stderr[-2000:])
+        found = json.loads(out.read_text())
+        self.assertEqual(found["data"], "supplied with --data-root")
+        flows, scores = found["flows"], found["scores"]
+        self.assertEqual((flows["flows_used"], scores["datasets"]), (5, 8))
+        # four of the five flows have a factor, the same four both ways (heat has none in
+        # any method); no flow loses or gains one
+        with_factor = flows["flows_with_a_factor_in_some_method"]
+        self.assertEqual(with_factor, {"sentier-mappings": 4, "brightway-flows": 4})
+        self.assertEqual((flows["lost"], flows["gained"]), ([], []))
+        # the gas conversion moves fossil resource use by 0.06 %, which is under the 1 % line
+        self.assertEqual(scores["moved_in_any_category_over_1_percent"], 0)
+        changed = {m["method"]: m["flows_with_another_factor"] for m in flows["per_method"]}
+        self.assertEqual({method for method, n in changed.items() if n}, {FOSSILS})
 
     def test_every_step_ran_and_both_audits_pass_without_findings(self):
         provider, patched = self.load("provider", "build.json"), self.load("patched", "build.json")

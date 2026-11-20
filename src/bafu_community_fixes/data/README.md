@@ -23,3 +23,7 @@ in #19.
 Rebuild both files with `uv run python scripts/build_brightway_flows_data.py`. It
 downloads everything it needs from public, pinned sources (GitHub and Zenodo) and
 checks their hashes; don't edit the files by hand.
+
+A third file derived from Brightway Flows, which the build reads and the patch tool does
+not, is kept with the build: `scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`
+(see `docs/brightway-build.md`).

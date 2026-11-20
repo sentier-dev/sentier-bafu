@@ -61,7 +61,7 @@ The steps, from the files that an LCA tool can open back to BAFU's files:
 | 7. Exports | Files for Brightway, openLCA, ILCD and SimaPro are written, and the patched copy again as ecoSpold v1, with BAFU's credit, the label *Modified Data* and the list of changes. Each file is read back. | Works on your own machine and in the checks of this repository. A tagged build keeps the files, and this page offers them after asking you to accept BAFU's terms. |
 | 6. Checks | Each database is checked: the datasets and exchanges are counted, every input must be linked to its supplier, and every score is computed. The two databases are then compared, and each difference is traced to an import fix or a patch. | Works |
 | 5. Brightway database | Two Brightway databases are built, with the EF 3.1 impact methods: one of BAFU's release and one of the patched copy. | Works |
-| 4. Elementary flows | BAFU's elementary flows are linked to the flows that the impact methods use. The Brightway build does this with the Sentier mappings. Patch 0010 does it with links to Brightway Flows. | Two ways exist. They do not agree yet. |
+| 4. Elementary flows | BAFU's elementary flows are linked to the flows that the impact methods use. The Brightway build does this with the Sentier mappings. Patch 0010 does it with links to Brightway Flows, and the build can follow those links too. A flow that names a country, such as *Water, CH*, takes the factor of that country where a method has one. | Two ways exist, and the build can use either. Measured on BAFU's release, the links of patch 0010 reach more flows (2,677 of 2,679, against 2,566), but 165 flows lose a factor, which moves the scores of most datasets in particulate matter, freshwater eutrophication, ecotoxicity and land use, nearly all of them downwards. The Sentier mappings stay the build's linking until those flows have factors. |
 | 3. Community patches | The community patches are applied one after the other. | Works |
 | 2. Import fixes | The preparations that every reader of the files needs are applied and recorded. | Works |
 | 1. BAFU's release | The ecoSpold v1 files of BAFU:2026 v1 are downloaded and checked against a known checksum. Nothing is changed. | Works |
@@ -96,14 +96,14 @@ uv run bafu-fixes run latest output/ --strict --report output/report.html
 
 Everything starts from the ecoSpold v1 files of BAFU:2026 v1. The patch tool downloads them and checks the download against a known checksum. Nothing is changed in this step.
 
-[sentier-brightway](https://github.com/sentier-dev/sentier-brightway) builds a Brightway database from BAFU:2026 v1 without the community patches, together with the EF 3.1 impact methods.
+The Brightway installer of this repository builds a Brightway database from BAFU:2026 v1 without the community patches, together with the EF 3.1 impact methods. It is the second package of this repository beside the patch tool, and it is the code of [sentier-brightway](https://github.com/sentier-dev/sentier-brightway), which was moved here with its history.
 
 ```sh
-git clone https://github.com/sentier-dev/sentier-brightway.git
-cd sentier-brightway
-uv sync
-uv run sentier-brightway coverage
-uv run sentier-brightway db --project NAME
+git clone https://github.com/sentier-dev/sentier-bafu.git
+cd sentier-bafu
+uv sync --extra brightway
+uv run --no-sync sentier-brightway coverage
+uv run --no-sync sentier-brightway db --project NAME
 ```
 
 - `coverage` prints how many of BAFU's elementary flows are linked to an EF 3.1 flow.

@@ -25,7 +25,8 @@ steps that can still run do, and the command ends with status 1.
 4. layer      with `--contribution`: the layer's changes are applied to the tables
 5. label      a patched copy gets its own source name on every dataset
 6. data       the pinned flow terms, methods and mapping are fetched and checked
-7. install    sentier-brightway writes the Brightway database and the EF 3.1 methods
+7. install    the Brightway installer of this repository (`src/sentier_brightway`) writes
+              the Brightway database and the EF 3.1 methods
 8. mark       the database's metadata says what it was built from ("Modified Data", patch ids)
 9. audit      `release_build/audit_brightway.py` reads the database back and scores it
 10. published with `--published-results FILE`: the comparison with BAFU's published LCIA
@@ -36,8 +37,10 @@ patched copy is called `bafu-2026-v1-patched`, so that nobody takes it for BAFU'
 A contribution is never built into either: `--contribution` builds the patched copy plus
 that one layer as a database under the contribution's own name.
 
-sentier-importers and sentier-brightway are used at the commits in `release_build/pins.toml`,
-each in its own `uv` environment. This script needs Python 3.12 or newer, `uv` and `git`.
+The patch tool and the Brightway installer are this repository's two packages and run in
+its one `uv` environment, with the `brightway` extra. sentier-importers is another
+repository's tool: it is used at the commit in `release_build/pins.toml`, in an environment
+of its own. This script needs Python 3.12 or newer, `uv` and `git`.
 
 Everything is written under `OUT`. The built database holds BAFU's inventory, which is under
 BAFU's Terms of Use: keep `OUT` local, and never upload it from a CI job. `build.json`, the
@@ -64,6 +67,16 @@ from release_build import layer as layer_file  # noqa: E402
 REPOSITORY = Path(__file__).resolve().parents[1]
 HELPERS = REPOSITORY / "scripts" / "release_build"
 PINS = HELPERS / "pins.toml"
+# What the installer needs to follow patch 0010's links: for each row of the crosswalk, the
+# flow of Brightway Flows, its unit, the conversion that release states, and the EF 3.1 flow
+# a flow outside EF 3.1 takes its factors from (scripts/build_brightway_flows_targets.py).
+FLOW_LINKS = HELPERS / "brightway-flows-targets-bafu-2026-v1.csv"
+LINKINGS = ("sentier-mappings", "brightway-flows")
+# The name under which a build of the second linking keeps the file it was linked through,
+# so that the comparison reads the same file (release_build/compare_builds.py)
+KEPT_FLOW_LINKS = "flow-links.csv"
+NOTICE_SUFFIX = ".NOTICE.md"  # as `notice_of` in the installer's files.py
+FLOW_LINKS_NOTICE = FLOW_LINKS.with_name(FLOW_LINKS.name + NOTICE_SUFFIX)
 # Where sentier-importers' registry expects BAFU's release, below its data root
 IMPORTER_INPUT = Path("sources") / "bafu-2026" / "BAFU-2026 v1_ecoSpold v1.zip"
 IMPORTER_SOURCES = ("bafu-processes", "bafu-exchanges")
@@ -75,7 +88,7 @@ STEPS = (
 LABELS = HELPERS / "export_labels.toml"
 EXPORT = REPOSITORY / "scripts" / "export_release.py"
 LAYERS = REPOSITORY / "community" / "layers"
-# The source name sentier-importers writes on every dataset, which sentier-brightway uses as
+# The source name sentier-importers writes on every dataset, which the installer uses as
 # the database name: BAFU's release. A patched copy gets another.
 PROVIDER_SOURCE = "bafu-2026"
 PATCHED_SOURCE = "bafu-2026-v1-patched"
@@ -151,8 +164,29 @@ def run(
     return result
 
 
+class Project:
+    """This repository's own environment: the patch tool and, with the `brightway` extra,
+    the Brightway installer. Every step of the build that is this repository's runs in it."""
+
+    name = "sentier-bafu"
+    extra = "brightway"
+
+    def __init__(self, venvs: Path | None):
+        self.venvs = venvs
+
+    def command(self, *arguments: str) -> list[str]:
+        project = ["--project", str(REPOSITORY), "--extra", self.extra]
+        return ["uv", "run", "--frozen", *project, *arguments]
+
+    def env(self) -> dict[str, str]:
+        if self.venvs is None:
+            return {}
+        return {"UV_PROJECT_ENVIRONMENT": str(self.venvs / self.name)}
+
+
 class Tool:
-    """A pinned checkout of another repository, run in its own `uv` environment."""
+    """A tool of another repository, which the build runs in its own `uv` environment from
+    a checkout pinned by commit."""
 
     def __init__(self, name: str, pin: dict, folder: Path, venvs: Path | None):
         self.name, self.pin, self.folder, self.venvs = name, pin, folder, venvs
@@ -192,7 +226,7 @@ def _git(*arguments: str) -> str:
 
 
 def load_pins(path: Path = PINS) -> dict:
-    """The pinned tools (`[tools.*]`). Data pins (`[data.*]`) are read by `data_root.py`."""
+    """The pinned tools (`[tools.*]`). The data is pinned by the installer's `sources.toml`."""
     return tomllib.loads(path.read_text())["tools"]
 
 
@@ -272,12 +306,12 @@ def latest_release(venvs: Path | None) -> Path:
     cache folder. Used for `build latest OUT`.
     """
     code = "from bafu_community_fixes.download import latest_release; print(latest_release())"
-    env = {"UV_PROJECT_ENVIRONMENT": str(venvs / "bafu-fixes")} if venvs else {}
+    project = Project(venvs)
     done = subprocess.run(
-        ["uv", "run", "--frozen", "--project", str(REPOSITORY), "python", "-c", code],
+        project.command("python", "-c", code),
         capture_output=True,
         text=True,
-        env={**os.environ, **env},
+        env={**os.environ, **project.env()},
     )
     if done.returncode != 0:
         raise BuildError(f"Could not get the latest release: {done.stderr.strip()[-500:]}")
@@ -304,20 +338,30 @@ def build(args: argparse.Namespace) -> int:
     importers = Tool(
         "sentier-importers", pins["sentier-importers"], tools_dir / "sentier-importers", venvs
     )
-    brightway = Tool(
-        "sentier-brightway", pins["sentier-brightway"], tools_dir / "sentier-brightway", venvs
-    )
+    project = Project(venvs)
     database, residual = paths["database"], paths["residual_database"]
+    flow_links = []
+    if args.linking == LINKINGS[1]:
+        if not FLOW_LINKS.is_file():
+            raise BuildError(f"{FLOW_LINKS} is not there; the Brightway Flows linking needs it")
+        kept = out / KEPT_FLOW_LINKS
+        shutil.copyfile(FLOW_LINKS, kept)
+        # The file is under the Open Database License; its notice goes with every copy,
+        # and the installer passes it on with the copy it keeps in a files export.
+        if not FLOW_LINKS_NOTICE.is_file():
+            raise BuildError(f"{FLOW_LINKS_NOTICE} is not there; the copy of the links needs it")
+        shutil.copyfile(FLOW_LINKS_NOTICE, out / (KEPT_FLOW_LINKS + NOTICE_SUFFIX))
+        flow_links = ["--flow-links", str(kept)]
     record = {
         "label": paths["label"],
         "patched": paths["patched"],
         "started": datetime.now(UTC).isoformat(timespec="seconds"),
         "status": "running",
+        "linking": args.linking,
         "release": {"name": paths["release_name"], "folder": str(paths["release"])},
         "tools": {
             "this repository": _repository_commit(),
             importers.name: importers.ensure(args.allow_unpinned),
-            brightway.name: brightway.ensure(args.allow_unpinned),
             "uv": subprocess.run(
                 ["uv", "--version"], capture_output=True, text=True
             ).stdout.strip(),
@@ -326,6 +370,15 @@ def build(args: argparse.Namespace) -> int:
         },
         "project": paths["project"],
         "databases": {"inventory": database, "flows": BIOSPHERE_DB, "no_ef_3_1_flow": residual},
+        # the installer's options, for whoever assembles the same links again (the comparison)
+        "install": {
+            "source": database,
+            "flow_terms_of": PROVIDER_SOURCE if paths["patched"] else None,
+            "located": True,
+            "flow_links": {"file": FLOW_LINKS.name, "sha256": adapter.sha256_file(FLOW_LINKS)}
+            if flow_links
+            else None,
+        },
         "steps": {},
     }
 
@@ -353,7 +406,6 @@ def build(args: argparse.Namespace) -> int:
         source = paths["release"]
         record["release"]["record_of_changes"] = []
         if paths["patched"]:
-            patch_env = {"UV_PROJECT_ENVIRONMENT": str(venvs / "bafu-fixes")} if venvs else {}
             options = ["--xsd-check", args.xsd_check, "--report", str(paths["patch_report"])]
             options += ["--summary", str(paths["patch_summary"])]
             record["release"]["record_of_changes"] += [
@@ -365,11 +417,11 @@ def build(args: argparse.Namespace) -> int:
                     options += [flag, *ids]
             step(
                 "patch",
-                [
-                    *("uv", "run", "--frozen", "--project", str(REPOSITORY), "bafu-fixes", "run"),
-                    *(str(source), str(paths["patched_release"]), *options),
-                ],
-                patch_env,
+                project.command(
+                    *("bafu-fixes", "run", str(source), str(paths["patched_release"])),
+                    *options,
+                ),
+                project.env(),
             )
             source = paths["patched_release"]
 
@@ -475,42 +527,40 @@ def build(args: argparse.Namespace) -> int:
         # 6. data
         data_command = [
             *("python", str(HELPERS / "data_root.py"), str(paths["pinned_data"])),
-            *("--pins", str(args.pins.resolve()), "--record", str(out / "data-pins.json")),
+            *("--record", str(out / "data-pins.json")),
         ]
-        terms = paths["data_root"] / "sentier-vocab" / "terms"
-        if paths["patched"]:
-            # sentier-brightway looks up the flow terms of the inventory's own source
-            data_command += ["--flow-terms", PROVIDER_SOURCE, database]
-            data_command += [str(terms / f"{database}.parquet")]
-        step("data", brightway.command(*data_command), brightway.env())
+        step("data", project.command(*data_command), project.env())
         pinned = json.loads((out / "data-pins.json").read_text())
         inventory = paths["data_root"] / "sentier-inventory" / "data" / folder_name
         inventory.mkdir(parents=True)
         for file in sorted(tables.iterdir()):
             shutil.copy2(file, inventory / file.name)
         for name in PINNED_DATA:
-            if name == "sentier-vocab" and paths["patched"]:
-                for file in sorted((Path(pinned["folder"]) / name / "terms").glob("*.parquet")):
-                    (terms / file.name).symlink_to(file)
-            else:
-                (paths["data_root"] / name).symlink_to(Path(pinned["folder"]) / name)
+            (paths["data_root"] / name).symlink_to(Path(pinned["folder"]) / name)
         record["data_pins"] = [
             {key: value for key, value in pin.items() if key != "files"}
             for pin in pinned["sources"]
         ]
 
         # 7. install
-        bw_env = {**brightway.env(), "BRIGHTWAY2_DIR": str(paths["brightway_dir"])}
+        bw_env = {**project.env(), "BRIGHTWAY2_DIR": str(paths["brightway_dir"])}
         paths["brightway_dir"].mkdir(parents=True, exist_ok=True)
+        # a patched copy has its own name and the flows of BAFU's release, because its
+        # elementary exchanges are linked on the flows BAFU declared
+        flows_of = ["--flow-terms-of", PROVIDER_SOURCE] if paths["patched"] else []
+        install_report = paths["logs"] / "install-report.json"
         step(
             "install",
-            brightway.command(
+            project.command(
                 *("sentier-brightway", "db", "--project", paths["project"]),
                 *("--source", database, "--data-root", str(paths["data_root"])),
+                *("--report", str(install_report)),
+                *flows_of,
+                *flow_links,
             ),
             bw_env,
         )
-        record["coverage"] = _coverage_lines(paths["logs"] / "install.log")
+        record["coverage"] = _linking_report(install_report)
 
         # 8. mark
         build_steps = _build_steps(record, receipt, inventory)
@@ -519,7 +569,7 @@ def build(args: argparse.Namespace) -> int:
         marker.write_text(json.dumps(_marker(record, build_steps), indent=2) + "\n")
         step(
             "mark",
-            brightway.command(
+            project.command(
                 *("python", str(HELPERS / "mark_database.py"), "--project", paths["project"]),
                 *("--database", database, "--database", residual),
                 *("--build", str(marker), "--provider-source", PROVIDER_SOURCE),
@@ -528,7 +578,7 @@ def build(args: argparse.Namespace) -> int:
         )
 
         # 9. audit (exit code 1: the audit wrote its file and found errors)
-        audit_command = brightway.command(
+        audit_command = project.command(
             *("python", str(HELPERS / "audit_brightway.py"), "--project", paths["project"]),
             *("--database", database, "--out", str(paths["audit"]), "--label", paths["label"]),
             *("--labels", str(paths["labels"])),
@@ -561,20 +611,22 @@ def build(args: argparse.Namespace) -> int:
         else:
             step(
                 "published",
-                brightway.command(
+                project.command(
                     *("sentier-brightway", "backtest", "--out", str(paths["published"])),
                     *("--source", database, "--data-root", str(paths["data_root"])),
                     *("--xlsx", str(workbook.resolve())),
+                    *flows_of,
+                    *flow_links,
                 ),
-                brightway.env(),
+                project.env(),
             )
             step(
                 "published",
-                brightway.command(
+                project.command(
                     *("python", str(HELPERS / "published_results.py"), str(paths["published"])),
                     *("--out", str(paths["published_summary"])),
                 ),
-                brightway.env(),
+                project.env(),
             )
             record["published_results"] = {
                 "status": "compared",
@@ -655,14 +707,32 @@ def _build_steps(record: dict, receipt: adapter.Receipt, inventory: Path) -> lis
     An export of the database lists these after the patch tool's own steps.
     """
     mapping = next(pin for pin in record["data_pins"] if pin["name"] == "sentier-mappings")
+    if record.get("linking") == "brightway-flows":
+        linked = (
+            "Elementary exchanges are linked to flows of Brightway Flows, through the links "
+            f"of patch 0010 ({FLOW_LINKS.name}). An amount is converted only where Brightway "
+            "Flows states the conversion. A flow outside EF 3.1 takes the factors of the "
+            "EF 3.1 flow that Brightway Flows names for it; where it names none, the flow has "
+            "no factor. Exchanges whose conversion is unknown stay on BAFU's flow, in the "
+            f"database {record['databases']['no_ef_3_1_flow']}, without a factor."
+        )
+    else:
+        linked = (
+            "Elementary exchanges are linked to EF 3.1 flows through "
+            f"sentier-mappings at {mapping['commit'][:12]}, with its conversion factors. "
+            "Exchanges of flows the mapping does not hold stay on BAFU's flow, in the "
+            f"database {record['databases']['no_ef_3_1_flow']}, without a factor."
+        )
+    linked += (
+        " A flow that names a country (Water, CH) is linked to the flow of that country "
+        "and takes that country's factor in the methods that have one; the country is "
+        "the one sentier-mappings states for the flow."
+    )
     steps = [
         {
             "id": "build-ef-3.1-links",
             "kind": "build step",
-            "description": "Elementary exchanges are linked to EF 3.1 flows through "
-            f"sentier-mappings at {mapping['commit'][:12]}, with its conversion factors. "
-            "Exchanges of flows the mapping does not hold stay on BAFU's flow, in the "
-            f"database {record['databases']['no_ef_3_1_flow']}, without a factor.",
+            "description": linked,
             "datasets": receipt.datasets,
         }
     ]
@@ -711,10 +781,7 @@ def _marker(record: dict, build_steps: list[dict]) -> dict:
         "import_fixes": sorted(release["import_fixes"]),
         "record_of_changes": release["record_of_changes"],
         "build_steps": build_steps,
-        "tools": {
-            name: record["tools"][name]
-            for name in ("this repository", "sentier-importers", "sentier-brightway")
-        },
+        "tools": {name: record["tools"][name] for name in ("this repository", "sentier-importers")},
         "data": record["data_pins"],
         "contribution": record.get("contribution"),
     }
@@ -735,27 +802,39 @@ def _repository_commit() -> str:
     return commit + (" (with local changes)" if changed else "")
 
 
-def _coverage_lines(log: Path) -> list[str]:
-    """The linking report sentier-brightway prints after an install."""
-    lines = log.read_text(errors="replace").splitlines()
-    start = next((i for i, line in enumerate(lines) if line.startswith("Installed ")), None)
-    return [] if start is None else [line for line in lines[start:] if line.strip()]
+def _linking_report(report: Path) -> list[str]:
+    """The lines of the linking report the installer wrote beside its install."""
+    if not report.is_file():
+        raise BuildError(f"The installer wrote no report at {report}")
+    lines = json.loads(report.read_text()).get("lines")
+    if not isinstance(lines, list) or not all(isinstance(line, str) for line in lines):
+        raise BuildError(f"{report} holds no lines of a linking report")
+    return lines
+
+
+def linking_of(build: Path) -> str:
+    """How a build linked its elementary flows, from its own record."""
+    record = build / "build.json"
+    if not record.is_file():
+        return LINKINGS[0]
+    return json.loads(record.read_text()).get("linking", LINKINGS[0])
 
 
 def compare(args: argparse.Namespace) -> int:
-    pins = load_pins(args.pins)
-    tools_dir = (args.tools or args.candidate / "tools").resolve()
-    venvs = args.venvs.resolve() if args.venvs else None
-    brightway = Tool(
-        "sentier-brightway", pins["sentier-brightway"], tools_dir / "sentier-brightway", venvs
-    )
-    brightway.ensure(args.allow_unpinned)
-    command = brightway.command(
+    if linking_of(args.baseline) != linking_of(args.candidate):
+        # a difference between the two would be the linking's, and no step explains that
+        raise BuildError(
+            f"{args.baseline} was linked through {linking_of(args.baseline)} and "
+            f"{args.candidate} through {linking_of(args.candidate)}. The comparison says "
+            "which step changed what between two builds of one linking."
+        )
+    project = Project(args.venvs.resolve() if args.venvs else None)
+    command = project.command(
         *("python", str(HELPERS / "compare_builds.py")),
         *(str(args.baseline.resolve()), str(args.candidate.resolve())),
         *("--out", str(args.out.resolve())),
     )
-    done = subprocess.run(command, env={**os.environ, **brightway.env()})
+    done = subprocess.run(command, env={**os.environ, **project.env()})
     return done.returncode
 
 
@@ -918,12 +997,12 @@ def release(args: argparse.Namespace) -> int:
     shared += ["--allow-unpinned"] if args.allow_unpinned else []
     options = [*shared, "--pinned-data", str((args.pinned_data or out / "pinned-data").resolve())]
     options += ["--labels", str(args.labels.resolve()), "--xsd-check", args.xsd_check]
+    options += ["--linking", args.linking]
     options += ["--sample", str(args.sample.resolve())] if args.sample else []
     if args.published_results:
         options += ["--published-results", str(args.published_results.resolve())]
     entry = [sys.executable, str(Path(__file__).resolve())]
-    patch_env = {"UV_PROJECT_ENVIRONMENT": str(venvs / "bafu-fixes")} if venvs else {}
-    patch_tool = ["uv", "run", "--frozen", "--project", str(REPOSITORY), "python"]
+    project = Project(venvs)
     steps: list[dict] = []
 
     def done(name: str) -> bool:
@@ -976,9 +1055,9 @@ def release(args: argparse.Namespace) -> int:
     )
     step(
         "written files",
-        [*patch_tool, str(REPOSITORY / "scripts" / "check_patched_release.py")]
+        project.command("python", str(REPOSITORY / "scripts" / "check_patched_release.py"))
         + [str(patched / "release"), "--summary", str(summary)],
-        env=patch_env,
+        env=project.env(),
         ready=summary.is_file() and (patched / "release").is_dir(),
         why="the patch tool wrote no patched copy",
     )
@@ -1095,7 +1174,8 @@ def release(args: argparse.Namespace) -> int:
     return int(data["status"] != "completed" or bool(blocked) or bool(held_back))
 
 
-def main(argv: list[str] | None = None) -> int:
+def arguments() -> argparse.ArgumentParser:
+    """The command line: `build`, `release` and `compare`, with their options."""
     parser = argparse.ArgumentParser(
         description=__doc__.splitlines()[0], formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -1106,11 +1186,14 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument(
             "--tools",
             type=Path,
-            help="Folder with checkouts of sentier-importers and sentier-brightway; missing "
-            "ones are cloned there at the pinned commit (default: OUT/tools)",
+            help="Folder with the checkout of sentier-importers; a missing one is cloned "
+            "there at the pinned commit (default: OUT/tools)",
         )
         p.add_argument(
-            "--venvs", type=Path, help="Keep the tools' environments here, not in the checkouts"
+            "--venvs",
+            type=Path,
+            help="Keep the environments here (this repository's and sentier-importers'), not "
+            "in the checkouts",
         )
         p.add_argument(
             "--allow-unpinned",
@@ -1127,6 +1210,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     b.add_argument("out", type=Path, help="Empty folder for everything the build writes")
     b.add_argument("--no-patches", action="store_true", help="Build the provider release as is")
+    linking_help = (
+        "How elementary flows are linked to the flows of the impact methods: through the "
+        "mapping of sentier-mappings (default), or through Brightway Flows, with the links "
+        "of patch 0010. The second runs the whole path too, and is not the build's own: "
+        "flows lose their factor under it, and nothing built with it is kept under a tag "
+        "(docs/brightway-build.md)."
+    )
+    b.add_argument("--linking", choices=LINKINGS, default=LINKINGS[0], help=linking_help)
     b.add_argument("--only", nargs="+", metavar="ID", help="Apply only these patches")
     b.add_argument("--skip", nargs="+", metavar="ID", help="Don't apply these patches")
     b.add_argument(
@@ -1222,6 +1313,7 @@ def main(argv: list[str] | None = None) -> int:
         help="A contribution layer to build whether or not somebody has authorised it "
         "(repeatable); its database and exports say if nobody has",
     )
+    r.add_argument("--linking", choices=LINKINGS, default=LINKINGS[0], help=linking_help)
     r.add_argument("--xsd-check", choices=("off", "end", "every-step"), default="every-step")
     r.add_argument("--sample", type=Path, help="Datasets the audit scores (see `build`)")
     r.add_argument("--labels", type=Path, default=LABELS, help="See `build`")
@@ -1236,8 +1328,11 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--out", type=Path, required=True, help="JSON file to write")
     common(c)
     c.set_defaults(run=compare)
+    return parser
 
-    args = parser.parse_args(argv)
+
+def main(argv: list[str] | None = None) -> int:
+    args = arguments().parse_args(argv)
     try:
         return args.run(args)
     except (BuildError, adapter.AdapterError) as error:
