@@ -1,94 +1,70 @@
-# The Brightway installer
+# The Brightway installer, and what this repository adds to it
 
-The installer writes BAFU's inventory into Brightway: three databases and the 25 EF 3.1 impact
-methods. The build of this repository runs it (`scripts/build_release.py`, step 7), and you can
-run it on its own.
+The installer is [sentier-brightway](https://github.com/sentier-dev/sentier-brightway). It
+reads a Sentier data root (an inventory, the EF 3.1 flow terms, the EF 3.1 methods, and the
+mapping from the inventory's flows to EF 3.1) and writes three Brightway databases and 25
+methods, into a Brightway project or as files. Its own repository documents it.
 
-It is the second package of this repository's project, beside the patch tool:
+This repository does not ship a copy of it. The `brightway` extra of this project names it
+as a dependency, pinned by commit (`pyproject.toml`), and `uv.lock` holds that commit. A
+change to the installer is a pull request there; here the pin moves.
 
-| | Patch tool | Brightway installer |
-|---|---|---|
-| Package | `src/bafu_community_fixes` | `src/sentier_brightway` |
-| Command | `bafu-fixes` | `sentier-brightway` |
-| Needs | the project's dependencies | the same, and the `brightway` extra (pandas, bw2calc, bw2data and others) |
-| Tests | `tests/` | `installer-tests/` |
+## What `src/bafu_brightway` adds
 
-The two share one `pyproject.toml`, one lock (`uv.lock`), Python 3.14 and one set of lint
-rules. The patch tool runs without the extra.
-
-The code is that of [sentier-brightway](https://github.com/sentier-dev/sentier-brightway) by
-Laurenz Bougan. It was moved here on 15 November 2026 with its history, at commit `90d57eb`,
-and keeps its package name and its command. [Its changelog](brightway-installer-changelog.md)
-says what changed since.
-
-## What it does
-
-| Command | What it does |
+| Module | What it does |
 |---|---|
-| `sentier-brightway coverage` | Prints how many of the inventory's elementary flows are linked, without Brightway. |
-| `sentier-brightway db --project NAME` | Writes the databases and the methods into a Brightway project. |
-| `sentier-brightway files --out FOLDER` | Writes the same build as parquet tables and bw_processing datapackages. |
-| `sentier-brightway backtest --out FOLDER --xlsx FILE` | Scores every dataset and compares with BAFU's published LCIA results. The workbook is not in this repository. |
+| `located.py` | A flow that names a country (`Water, CH`) takes that country's factor, on a flow node of its own. The mapping states the country; the methods hold the factor. |
+| `countries.py` | Reads the factors of single countries from sentier-methods. The installer's reader of the methods leaves them out. |
+| `brightway_flows.py` | The second linking: every elementary flow linked through Brightway Flows, with the links of patch 0010, in place of the mapping. |
+| `pins.py`, `sources.toml` | The data the build is measured on, pinned by commit and SHA-256. The installer has pins of its own, which move with it; the build reads these. Also says, for the record of an export, what a data root holds. |
+| `files.py` | The installer's files export, with the links file and its notice for the second linking, and this package's counts in the manifest. |
+| `report.py` | The installer's counts, and beside them the flows that name a country and how the flows were linked. |
+| `__init__.py`, `cli.py` | The driver that calls the installer's parts in order, and the command. |
 
-Run them from a checkout of this repository:
+The driver calls the installer's own functions: it loads the tables, applies the two steps
+above, hands the result to the installer's `build()`, and writes with the installer's
+writers. It changes nothing inside the installer.
 
-```sh
-uv run --extra brightway sentier-brightway coverage
-```
-
-Without `--data-root` the installer downloads the inventory, the flow terms, the methods and
-the mapping at the commits in `src/sentier_brightway/sources.toml` and checks each file's
-SHA-256. That file is the one place a data pin lives: the build reads the same commits.
-`scripts/pin_sources.py` writes it again when a pin moves.
-
-## What it writes
-
-- `ef-3.1-biosphere`: one node for each flow of EF 3.1, and for each flow a link ends on. A
-  flow in one country (`Water, CH`) has a node of its own, with the country as its location.
-- `<source>`: the inventory, named after its source (`bafu-2026` for BAFU's release).
-- `<source>-residual`: the source's elementary flows that are not linked, without a factor.
-- The methods `("sentier", "EF v3.1", <category>)`: the factors that have no location, and
-  for the flows of one country that country's factor.
-
-## How elementary flows are linked
-
-- **By default**, through the mapping folder `bafu-2026-v1__ef-3.1` of sentier-mappings: each
-  BAFU flow goes to the EF 3.1 flow the mapping names, with the mapping's conversion factor.
-- **With `--flow-links FILE`**, through Brightway Flows, with the links of patch 0010
-  (`brightway_flows.py`). An amount is converted only where Brightway Flows states the
-  conversion, and a flow outside EF 3.1 takes the factors of the one flow Brightway Flows
-  names as their source. [The build's page](brightway-build.md) says what that changes.
-
-**A flow that names a country** takes that country's factor in the methods that have one,
-under either linking (`located.py`). BAFU has 238 such flows, `Water, CH` among them, and
-the mapping states the country of each. `--skip-located` gives them the factor without a
-location, as before 15 November 2026.
-
-Two more options serve the build: `--flow-terms-of SOURCE` reads the elementary flow terms of
-another source than the inventory's own (a patched copy of a release has its own name and the
-release's flows), and `--report FILE` writes the linking report as JSON.
-
-## Check a change
+## The command
 
 ```sh
-uv sync --locked --extra brightway
-uv run --no-sync pytest installer-tests
+uv sync --extra brightway
+uv run --no-sync bafu-brightway coverage            # what would be linked, no Brightway
+uv run --no-sync bafu-brightway db --project NAME   # into a Brightway project
+uv run --no-sync bafu-brightway files --out FOLDER  # as files
 ```
 
-The tests build a made-up data root. They need none of BAFU's data and download nothing. Lint
-and formatting are the project's (`uv run ruff check`, `uv run ruff format --check`). The
-checks of every pull request run all of these.
+Options beside the installer's own:
 
-## What it does not do
+- `--skip-located`: every flow on the factor without a location.
+- `--flow-links FILE`: link through Brightway Flows, with a targets file
+  (`scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`).
+- `--flow-terms-of SOURCE`: the flow terms of another source. A patched copy has its own
+  name and the flows of the release it was made from.
+- `--report FILE`: the report as JSON (its lines and its counts), which the build reads.
 
-- Only EF 3.1. A flow that names no country takes the factor without a location, whatever
-  the location of its dataset: BAFU's exchanges carry no location of their own.
-- Uncertainty is carried into the Brightway database, not into the files export.
-- The comparison with BAFU's published results uses pypardiso for its solve where that
-  package is installed, and SciPy's SuperLU otherwise. The project's lock does not hold
-  pypardiso.
+Without `--data-root` and without `$SENTIER_DATA_ROOT` the command downloads the files that
+`src/bafu_brightway/sources.toml` pins, once, and checks them.
 
-## Licence and credit
+## What is still the installer's and missing there
 
-MIT, © 2026 Départ de Sentier (`src/sentier_brightway/LICENSE`). BAFU's inventory is under
-BAFU's Terms of Use, not under this licence; the installer prints the credit BAFU asks for.
+- **The spelling of a location in a patched copy.** The import fixes write
+  `EURwoCH` where BAFU's results workbook says `Europe without Switzerland`. The join of
+  our scores with the published results is inside the installer, so until it knows that
+  spelling, the datasets of that location are not compared when a patched copy is compared
+  with BAFU's published results. A pull request to sentier-brightway is prepared.
+- **Five unit spellings** of Brightway Flows (`m2.a`, `m3.a`, `t.km`, `p.km`, `sm3`).
+  `brightway_flows.py` spells them itself; they would be better placed in the installer.
+- **Which data files were read.** The installer does not record its reads, so the manifest
+  of a files export says what the data root holds: the pinned commit where a folder holds
+  exactly the pinned files, and otherwise the files it holds with their SHA-256.
+
+## Tests
+
+`installer-tests/` holds the tests of this package, on a made-up data root:
+
+```sh
+uv run --frozen --extra brightway pytest installer-tests
+```
+
+The installer's own tests are in its repository.

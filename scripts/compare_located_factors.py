@@ -2,7 +2,7 @@
 
 BAFU has elementary flows that name a country (`Water, CH`). The installer links such a flow
 to the flow of that country and gives it that country's factor in every method that has one
-(`src/sentier_brightway/located.py`). This script builds BAFU's release both ways, with and
+(`src/bafu_brightway/located.py`). This script builds BAFU's release both ways, with and
 without that, scores every dataset in the 25 EF 3.1 categories and writes what differs:
 
 * how many flows name a country, how many of them take a factor of their country, and in
@@ -19,7 +19,7 @@ Run it in this repository's environment, with the `brightway` extra:
     uv run --frozen --extra brightway \\
         python scripts/compare_located_factors.py --work output/located --out comparison.json
 
-The data is at the installer's pins (`src/sentier_brightway/sources.toml`), downloaded once
+The data is at this repository's pins (`src/bafu_brightway/sources.toml`), downloaded once
 and checked by SHA-256; `--data-root` takes a folder that already holds the four data
 folders instead. `--work` receives two exports that hold BAFU's inventory: keep that folder
 on your machine. The file written with `--out` holds counts and names of methods, and no
@@ -64,11 +64,13 @@ def flows(data_root: Path) -> dict:
     """The flows that name a country, and which of them take a factor of their country."""
     from sentier_brightway.bridge import load_bridge
     from sentier_brightway.inventory import load_inventory
-    from sentier_brightway.located import locate
     from sentier_brightway.methods import load_methods
 
+    from bafu_brightway.countries import load_factors_of_countries
+    from bafu_brightway.located import locate
+
     bridge, methods = load_bridge(data_root), load_methods(data_root)
-    found = locate(bridge, methods)
+    found = locate(bridge, methods, load_factors_of_countries(data_root))
     exchanges = load_inventory(data_root).exchanges
     bio = exchanges[exchanges["flow_type"] == "biosphere"]
     used = set(bio["flow"])
@@ -91,10 +93,10 @@ def flows(data_root: Path) -> dict:
 def scores(work: Path, data_root: Path) -> tuple[dict, dict[str, Path]]:
     """Score every dataset both ways; per category, how many move and which way."""
     import numpy as np
-
-    import sentier_brightway as sb
     from sentier_brightway.backtest import CATEGORIES
     from sentier_brightway.backtest.scorer import score_all
+
+    import bafu_brightway as sb
 
     frames, folders = {}, {}
     for name, located in ((WITH, True), (WITHOUT, False)):
@@ -130,7 +132,6 @@ def scores(work: Path, data_root: Path) -> tuple[dict, dict[str, Path]]:
 def published(folders: dict[str, Path], workbook: Path, work: Path, shorts: list[str]) -> dict:
     """How each way agrees with BAFU's published results, in the categories named."""
     import pandas as pd
-
     from sentier_brightway import backtest
 
     result = {}

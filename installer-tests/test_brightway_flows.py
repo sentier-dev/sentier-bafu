@@ -8,14 +8,15 @@ from pathlib import Path
 
 import pytest
 from conftest import B1, B2, B3, CLIMATE, E1, E2, IONISING, P1, P2
-
-import sentier_brightway as sb
-from sentier_brightway import brightway_flows as bf
-from sentier_brightway.cli import main
 from sentier_brightway.constants import BIOSPHERE_DB, DEFAULT_SOURCE, inventory_db, residual_db
 from sentier_brightway.flows import load_ef_flows, load_source_flows
 from sentier_brightway.inventory import load_inventory
 from sentier_brightway.methods import load_methods
+
+import bafu_brightway as sb
+from bafu_brightway import brightway_flows as bf
+from bafu_brightway.cli import main
+from bafu_brightway.countries import load_factors_of_countries
 
 OUTSIDE = "a" * 40  # a flow of Brightway Flows that EF 3.1 does not hold
 OTHER = "b" * 40
@@ -102,7 +103,7 @@ def linked(data_root: Path, content: list[dict], **options) -> bf.FlowLinks:
         load_ef_flows(data_root),
         load_methods(data_root),
         targets,
-        **options,
+        **{"countries": load_factors_of_countries(data_root)} | options,
     )
 
 
@@ -291,7 +292,7 @@ def test_an_entry_of_account_is_not_linked_and_the_report_names_it(data_root):
 def test_a_linked_flow_whose_country_nobody_states_is_named(data_root):
     """The made-up climate method has a factor of DE for E1. A flow linked to E1 that the
     mapping does not hold may name a country, and the mapping is the one place that says so."""
-    assert dict(load_methods(data_root)[0].located) == {(E1, "DE"): 2.0}
+    assert dict(load_factors_of_countries(data_root)[CLIMATE]) == {(E1, "DE"): 2.0}
     not_held = linked(data_root, rows(), in_mapping=frozenset({B2}))
     assert not_held.report.country_not_stated == ("Carbon dioxide, fossil",)
     assert any(

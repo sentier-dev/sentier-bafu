@@ -25,7 +25,7 @@ steps that can still run do, and the command ends with status 1.
 4. layer      with `--contribution`: the layer's changes are applied to the tables
 5. label      a patched copy gets its own source name on every dataset
 6. data       the pinned flow terms, methods and mapping are fetched and checked
-7. install    the Brightway installer of this repository (`src/sentier_brightway`) writes
+7. install    the Brightway installer (sentier-brightway, through `src/bafu_brightway`) writes
               the Brightway database and the EF 3.1 methods
 8. mark       the database's metadata says what it was built from ("Modified Data", patch ids)
 9. audit      `release_build/audit_brightway.py` reads the database back and scores it
@@ -556,7 +556,7 @@ def build(args: argparse.Namespace) -> int:
         step(
             "install",
             project.command(
-                *("sentier-brightway", "db", "--project", paths["project"]),
+                *("bafu-brightway", "db", "--project", paths["project"]),
                 *("--source", database, "--data-root", str(paths["data_root"])),
                 *("--report", str(install_report)),
                 *flows_of,
@@ -617,7 +617,7 @@ def build(args: argparse.Namespace) -> int:
             step(
                 "published",
                 project.command(
-                    *("sentier-brightway", "backtest", "--out", str(paths["published"])),
+                    *("bafu-brightway", "backtest", "--out", str(paths["published"])),
                     *("--source", database, "--data-root", str(paths["data_root"])),
                     *("--xlsx", str(workbook.resolve())),
                     *flows_of,

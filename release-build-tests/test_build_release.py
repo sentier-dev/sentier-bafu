@@ -160,14 +160,20 @@ class Pins(unittest.TestCase):
         import tomllib
 
         project = tomllib.loads((build_release.REPOSITORY / "pyproject.toml").read_text())
-        # one project and one lock: the installer is the second package of the distribution,
-        # behind the extra the build asks for, and no pin names it
-        self.assertIn("sentier_brightway", project["tool"]["uv"]["build-backend"]["module-name"])
-        self.assertIn(build_release.Project.extra, project["project"]["optional-dependencies"])
-        self.assertEqual(
-            project["project"]["scripts"]["sentier-brightway"], "sentier_brightway.cli:main"
-        )
-        package = build_release.REPOSITORY / "src" / "sentier_brightway"
+        # one project and one lock. The installer is sentier-brightway, a dependency of the
+        # extra the build asks for, pinned by commit; this repository ships no copy of it,
+        # neither its package nor its command. What the build adds is a package of its own.
+        modules = project["tool"]["uv"]["build-backend"]["module-name"]
+        self.assertEqual(modules, ["bafu_community_fixes", "bafu_brightway"])
+        extra = project["project"]["optional-dependencies"][build_release.Project.extra]
+        pinned = [line for line in extra if line.startswith("sentier-brightway @ ")]
+        self.assertEqual(len(pinned), 1)
+        self.assertRegex(pinned[0], r"sentier-dev/sentier-brightway@[0-9a-f]{40}$")
+        scripts = project["project"]["scripts"]
+        self.assertNotIn("sentier-brightway", scripts)
+        self.assertEqual(scripts["bafu-brightway"], "bafu_brightway.cli:main")
+        self.assertFalse((build_release.REPOSITORY / "src" / "sentier_brightway").exists())
+        package = build_release.REPOSITORY / "src" / "bafu_brightway"
         self.assertTrue((package / "sources.toml").is_file())
         # no project of its own: neither the old folder nor a project file beside the code
         self.assertFalse((build_release.REPOSITORY / "brightway-installer").exists())
@@ -193,7 +199,7 @@ class Pins(unittest.TestCase):
     def test_this_repositorys_steps_run_in_its_one_environment(self):
         project = build_release.Project(Path("/venvs"))
         repository = str(build_release.REPOSITORY)
-        for command in (("bafu-fixes", "run"), ("sentier-brightway", "db")):
+        for command in (("bafu-fixes", "run"), ("bafu-brightway", "db")):
             # the patch tool and the installer: the same project, lock and extra
             self.assertEqual(
                 project.command(*command),

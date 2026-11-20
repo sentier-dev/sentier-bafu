@@ -15,7 +15,7 @@ Run it in this repository's environment, with the `brightway` extra:
         python scripts/compare_flow_linkings.py --work output/linkings --out comparison.json
 
 The data is the build's, because the build and the installer read one set of pins
-(`src/sentier_brightway/sources.toml`): the flow terms, the methods, the mapping, and BAFU's
+(`src/bafu_brightway/sources.toml`): the flow terms, the methods, the mapping, and BAFU's
 inventory as sentier-inventory holds it. The installer downloads them once into its cache
 and checks each file's SHA-256. `--data-root` takes a folder that already holds the four
 data folders instead; the file then says that the data was supplied.
@@ -39,17 +39,12 @@ MAPPING, LINKS = "sentier-mappings", "brightway-flows"
 
 
 def pinned_data() -> tuple[Path, list[dict]]:
-    """The data at the installer's pins, downloaded and checked, and the pins. The pinned
+    """The data at this repository's pins, downloaded and checked, and the pins. The pinned
     files are taken whatever `$SENTIER_DATA_ROOT` says, so that the file names what was read."""
-    from sentier_brightway.fetch import (
-        default_cache_dir,
-        load_packaged_manifest,
-        manifest_key,
-        materialize,
-    )
+    from bafu_brightway.pins import load_pins, pinned_data_root
 
-    manifest = load_packaged_manifest()
-    root = materialize(manifest, cache_dir=default_cache_dir() / manifest_key(manifest))
+    manifest = load_pins()
+    root = pinned_data_root()
     used = [
         {"name": source.name, "commit": source.ref, "pinned_by": "this repository"}
         for source in manifest
@@ -67,10 +62,10 @@ def relative(x, y):
 def datasets(work: Path, data_root: Path, flow_links: Path) -> dict:
     """Score every dataset both ways; per category, how many move and which way."""
     import numpy as np
-
-    import sentier_brightway as sb
     from sentier_brightway.backtest import CATEGORIES
     from sentier_brightway.backtest.scorer import score_all
+
+    import bafu_brightway as sb
 
     frames = {}
     for name, links in ((MAPPING, None), (LINKS, flow_links)):
@@ -111,22 +106,31 @@ def flows(data_root: Path, flow_links: Path) -> dict:
     """
     from dataclasses import replace
 
-    from sentier_brightway import brightway_flows as bf
     from sentier_brightway.bridge import load_bridge
-    from sentier_brightway.build import build
     from sentier_brightway.flows import load_ef_flows, load_source_flows
     from sentier_brightway.inventory import load_inventory
     from sentier_brightway.methods import load_methods
-    from sentier_brightway.report import render
+
+    from bafu_brightway import brightway_flows as bf
+    from bafu_brightway import build
+    from bafu_brightway.countries import load_factors_of_countries
+    from bafu_brightway.report import render
 
     inventory, methods = load_inventory(data_root), load_methods(data_root)
     source_flows, ef_flows = load_source_flows(data_root), load_ef_flows(data_root)
     targets = bf.load_targets(flow_links)
     mapping = load_bridge(data_root)
-    countries = {code: e.target_location for code, e in mapping.items() if e.target_location}
-    links = bf.link(inventory, source_flows, ef_flows, methods, targets, locations=countries)
-    built = build(inventory, ef_flows, source_flows, mapping, methods)
-    built_linked = build(inventory, links.ef_flows, source_flows, links.bridge, links.methods)
+    named = {code: e.target_location for code, e in mapping.items() if e.target_location}
+    factors_of_countries = load_factors_of_countries(data_root)
+    links = bf.link(
+        inventory, source_flows, ef_flows, methods, targets,
+        locations=named, in_mapping=frozenset(mapping), countries=factors_of_countries,
+    )  # fmt: skip
+    built = build(inventory, ef_flows, source_flows, mapping, methods, factors_of_countries)
+    built_linked = build(
+        inventory, links.ef_flows, source_flows, links.bridge, links.methods, links.countries,
+        linking=bf.LINKING, link_lines=links.report.lines(),
+    )  # fmt: skip
 
     bio = inventory.exchanges[inventory.exchanges["flow_type"] == "biosphere"]
     exchanges = bio.groupby("flow").size().to_dict()

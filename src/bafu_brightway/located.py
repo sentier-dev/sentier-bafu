@@ -24,8 +24,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from types import MappingProxyType
 
-from .bridge import BridgeEntry
-from .methods import MethodSpec
+from sentier_brightway.bridge import BridgeEntry
+from sentier_brightway.methods import MethodSpec
+
+#: method id -> {(EF flow code, location): factor}: the factors of single countries
+#: (``countries.load_factors_of_countries``). The installer's own reader of the methods
+#: leaves them out, so they are read and handed in beside the methods.
+Countries = Mapping[str, Mapping[tuple[str, str], float]]
 
 SEPARATOR = "@"
 
@@ -52,7 +57,9 @@ class Located:
     per_method: Mapping[str, int]
 
 
-def locate(bridge: Mapping[str, BridgeEntry], methods: tuple[MethodSpec, ...]) -> Located:
+def locate(
+    bridge: Mapping[str, BridgeEntry], methods: tuple[MethodSpec, ...], countries: Countries
+) -> Located:
     """Give each linked flow that names a country the target and the factors of that country.
 
     A second pass changes nothing and reports the same: a link that already ends on the
@@ -62,7 +69,9 @@ def locate(bridge: Mapping[str, BridgeEntry], methods: tuple[MethodSpec, ...]) -
         for entry in bridge.values()
         if entry.target_location and SEPARATOR not in entry.target_code
     }
-    with_factor = sorted(pair for pair in named if any(pair in spec.located for spec in methods))
+    with_factor = sorted(
+        pair for pair in named if any(pair in countries.get(spec.method_id, {}) for spec in methods)
+    )
     nodes = {located_code(code, location): (code, location) for code, location in with_factor}
     # what an earlier pass located: the code says which flow, the link which country
     done = {
@@ -91,12 +100,13 @@ def locate(bridge: Mapping[str, BridgeEntry], methods: tuple[MethodSpec, ...]) -
     specs, per_method = [], {}
     for spec in methods:
         table = dict(spec.cfs)
+        of_countries = countries.get(spec.method_id, {})
         added, own = [], 0
         for key, (code, location) in nodes.items():
             if key in table:
                 continue
-            if (code, location) in spec.located:
-                added.append((key, spec.located[(code, location)]))
+            if (code, location) in of_countries:
+                added.append((key, of_countries[(code, location)]))
                 own += 1
             elif code in table:
                 # the method knows the flow and has no factor of this country

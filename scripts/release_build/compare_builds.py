@@ -452,15 +452,15 @@ def installed(build: Path):
     A build made before 15 November 2026 has no record of its options: it was linked through
     the mapping, and no flow took a country's factor.
     """
-    import sentier_brightway
+    import bafu_brightway
 
     record = read_json(build / "build.json") or {}
     install = record.get("install") or {}
     database = (record.get("databases") or {}).get("inventory")
     patched = bool(record.get("patched"))
-    result = sentier_brightway.assemble(
+    result = bafu_brightway.assemble(
         data_root=build / "data-root",
-        source=install.get("source") or database or sentier_brightway.DEFAULT_SOURCE,
+        source=install.get("source") or database or bafu_brightway.DEFAULT_SOURCE,
         flow_links=build / FLOW_LINKS if linking_of(build) == LINKINGS[1] else None,
         flow_terms_of=install.get("flow_terms_of", "bafu-2026" if patched else None),
         include_located=bool(install.get("located", False)),

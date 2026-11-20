@@ -39,7 +39,7 @@ on:
       - "scripts/export_release.py"
       - "scripts/export_release.py.lock"
       - "scripts/release_build/**"
-      - "src/sentier_brightway/**"
+      - "src/bafu_brightway/**"
       - "community/layers/**"
       - "pyproject.toml"
       - "uv.lock"
