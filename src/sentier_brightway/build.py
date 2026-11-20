@@ -390,7 +390,10 @@ def _coverage(
     source: str = "bafu-2026",
     located: Mapping[str, tuple[str, str]] | None = None,
 ) -> Coverage:
-    """Coverage over ``bio`` (the biosphere exchange rows) and the ``unmapped`` codes."""
+    """Coverage over ``bio`` (the biosphere exchange rows) and the ``unmapped`` codes.
+
+    ``located`` are the targets of single countries; ``None`` says that the countries'
+    factors were left out, and then the flows that name a country are not counted."""
     used = set(bio["flow"])
     compartments = dict(
         zip(
@@ -406,6 +409,15 @@ def _coverage(
         flows_nomenclature=sum(1 for code in used if code in bridge and bridge[code].nomenclature),
         flows_located=sum(
             1 for code in used if code in bridge and bridge[code].target_code in (located or {})
+        ),
+        flows_named_without=0
+        if located is None
+        else sum(
+            1
+            for code in used
+            if code in bridge
+            and bridge[code].target_location
+            and bridge[code].target_code not in located
         ),
         exchange_rows=len(bio),
         exchange_rows_mapped=int(bio["flow"].isin(bridge.keys()).sum()),
@@ -432,7 +444,7 @@ def build(
     A linked flow that names a country takes the target and the factors of that country
     (``located.locate``); ``include_located=False`` leaves every flow on the factor without
     a location."""
-    nodes_of_countries: Mapping[str, tuple[str, str]] = {}
+    nodes_of_countries: Mapping[str, tuple[str, str]] | None = None
     if include_located:
         found = locate(bridge, methods)
         bridge, methods, nodes_of_countries = found.bridge, found.methods, found.nodes

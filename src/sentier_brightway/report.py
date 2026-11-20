@@ -27,6 +27,9 @@ class Coverage:
     # subset of flows_mapped: flows that name a country and are linked to the flow of that
     # country, with the country's factor in the methods that have one
     flows_located: int = 0
+    # linked flows that name a country for which no method has a factor of that country:
+    # they keep the factor without a location
+    flows_named_without: int = 0
     # how the elementary flows were linked: through the mapping folder of sentier-mappings,
     # or through Brightway Flows (then ``link_lines`` is that linking's own report)
     linking: str = "sentier-mappings"
@@ -49,6 +52,11 @@ def render(cov: Coverage) -> str:
             f"  {cov.flows_located} of the linked flows name a country and take that country's "
             "factor where a method has one"
         ]
+    if cov.flows_named_without:
+        located_lines.append(
+            f"  {cov.flows_named_without} of the linked flows name a country for which no "
+            "method has a factor of that country; they keep the factor without a location"
+        )
     conflict_lines = []
     if cov.unit_conflicts:
         conflict_lines = [

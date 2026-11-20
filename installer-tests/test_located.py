@@ -123,6 +123,47 @@ def test_the_build_gives_the_flow_a_node_of_its_country_and_scores_with_its_fact
     assert result.links[B1].target_code == E1_DE and result.links[B2].target_code == E2
 
 
+def test_a_build_from_links_that_are_located_already_writes_the_whole_node(data_root):
+    """A second pass finds the targets of countries in place. The node must still get its
+    name, its categories and its location, not the bare code."""
+    from sentier_brightway.build import build
+    from sentier_brightway.flows import load_ef_flows, load_source_flows
+    from sentier_brightway.inventory import load_inventory
+
+    name_the_country(data_root)
+    once = locate(load_bridge(data_root), load_methods(data_root))
+    assert once.bridge[B1].target_code == E1_DE
+    tables = (
+        load_inventory(data_root),
+        load_ef_flows(data_root),
+        load_source_flows(data_root, "bafu-2026"),
+    )
+    first = sentier_brightway.assemble(data_root).biosphere[(BIOSPHERE_DB, E1_DE)]
+    again = build(*tables, bridge=once.bridge, methods=once.methods)
+    node = again.biosphere[(BIOSPHERE_DB, E1_DE)]
+    assert node == first and node["location"] == "DE" and node["name"].endswith(", DE")
+    assert again.coverage.flows_located == 1
+
+
+def test_the_report_says_which_flows_name_a_country_without_a_factor_of_its_own(data_root):
+    """B2 names FR, and no method has a factor of FR: it keeps the factor without a
+    location, and the report says so beside the flows that were located."""
+    name_the_country(data_root)
+    name_the_country(data_root, source_code=B2, location="FR")
+    result = sentier_brightway.assemble(data_root)
+    assert result.links[B2].target_code == E2
+    assert (result.coverage.flows_located, result.coverage.flows_named_without) == (1, 1)
+    line = (
+        "  1 of the linked flows name a country for which no method has a factor of that "
+        "country; they keep the factor without a location"
+    )
+    assert line in sentier_brightway.render(result.coverage)
+    # with the countries' factors left out, no flow is counted either way
+    plain = sentier_brightway.assemble(data_root, include_located=False)
+    assert (plain.coverage.flows_located, plain.coverage.flows_named_without) == (0, 0)
+    assert "name a country" not in sentier_brightway.render(plain.coverage)
+
+
 def test_the_score_follows_the_countrys_factor(data_root, tmp_path):
     """P1 emits 1 kg of the flow itself and 0.5 kg per kWh through 2 kWh of P2: with the
     factor of DE (2.0) in place of 1.0 its climate score doubles."""
