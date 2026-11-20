@@ -42,6 +42,14 @@ LISTED = before_after_account.LISTED
 #: What the comparison counts as moved. The steps of the chain use it too, so that a value
 #: the comparison calls unexplained is never one the chain calls "agrees".
 TOLERANCE_NOTE = "the threshold of the comparison of two builds (compare_builds.py)"
+#: The comparison judges every value, however small. sentier-diagnostics sets values below
+#: a floor aside as "near zero" (1 % of a category's median size, unless told otherwise),
+#: and a value the comparison calls unexplained could then go unjudged in the chain. With
+#: no floor the two files count by one rule.
+FLOOR_FACTOR = 0.0
+#: The comparison's label for a moved value that no step explains. It is the comparison's
+#: finding and no step: it is no part of what the steps claim to reach.
+UNEXPLAINED = "unexplained"
 
 
 class ChainError(ValueError):
@@ -86,14 +94,42 @@ def located_by_method(build: Path) -> list[str] | None:
     return sorted(method for method, n in found if n)
 
 
+def refuse_another_state(world: dict, provider: dict, folder: Path) -> None:
+    """The state "the world's factors" is BAFU's release, built as the provider build was,
+    with the countries' factors left out. Any other build under that name would make the
+    step "the countries' factors" show something else."""
+    install, of_provider = world.get("install") or {}, provider.get("install") or {}
+    if install.get("located") is not False:
+        raise ChainError(
+            f"{folder}: not a build with the world's factors (its record does not say "
+            "`install.located: false`; build it with --skip-located)"
+        )
+    if world.get("patched"):
+        raise ChainError(f"{folder}: a patched copy, not BAFU's release as it is")
+    for what, one, other in (
+        ("release", (world.get("release") or {}).get("name"),
+         (provider.get("release") or {}).get("name")),
+        ("linking", install.get("flow_links"), of_provider.get("flow_links")),
+    ):  # fmt: skip
+        if one != other:
+            raise ChainError(
+                f"{folder}: built with another {what} than the build of BAFU's release it is "
+                f"compared with ({one!r}, not {other!r})"
+            )
+
+
 def reach_claim(reach: dict[str, dict[str, set]], text: str) -> dict:
     """The claim of a step whose scope is the comparison's reach, per category."""
     from sentier_diagnostics import claims
 
-    entries = [
-        claims.scope([method], set().union(*by_step.values()), "any", None, claims.MAY)
+    reached = {
+        method: set().union(*(found for step, found in by_step.items() if step != UNEXPLAINED))
         for method, by_step in sorted(reach.items())
-        if by_step and set().union(*by_step.values())
+    }
+    entries = [
+        claims.scope([method], found, "any", None, claims.MAY)
+        for method, found in reached.items()
+        if found
     ]
     union = set().union(*(e["items"] for e in entries)) if entries else set()
     return claims.claim(
@@ -202,6 +238,7 @@ def chain(
             tolerance=tolerance,
         )  # fmt: skip
         world_record = read_json(Path(world) / "build.json") or {}
+        refuse_another_state(world_record, records[0], world)
         world_side = (
             "BAFU's release, the world's factors",
             "Every elementary flow on the world's factor, also one that names a country.",
@@ -237,6 +274,7 @@ def chain(
             for c in codes
         },  # fmt: skip
         item_word=("dataset", "datasets"),
+        floor_factor=FLOOR_FACTOR,
         listed=listed,
         audience="public",
         claim_lists=False,
@@ -244,13 +282,13 @@ def chain(
     )
     # the chain and the comparison must agree on what nothing explains, or neither is believed
     unexplained = sum(
-        m["moved_by_step"].get("unexplained", 0) for m in comparison["scores"]["methods"]
+        m["moved_by_step"].get(UNEXPLAINED, 0) for m in comparison["scores"]["methods"]
     )
     outside = sum(
         (block.get("verdicts") or {}).get("not claimed", 0)
         for block in data["counts"]["steps"][last["id"]].values()
     )
-    if outside > unexplained:
+    if outside != unexplained:
         raise ChainError(
             f"{outside} values moved outside the reach of every step, and the comparison calls "
             f"{unexplained} unexplained"

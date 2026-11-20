@@ -620,6 +620,26 @@ class Tables(unittest.TestCase):
             )
             report = {"coverage": {"located_by_method": [["climate", 1], ["fossils", 0]]}}
             (provider / "logs" / "install-report.json").write_text(json.dumps(report))
+            # the state "the world's factors" is BAFU's release built without the countries'
+            # factors, as the provider build was built: any other build is refused
+            record = world / "build.json"
+            for written, said in (
+                (None, "not a build with the world's factors"),
+                ({"install": {"located": True}}, "not a build with the world's factors"),
+                ({"install": {"located": False}, "patched": True}, "a patched copy"),
+                ({"install": {"located": False}, "release": {"name": "Y:2027"}},
+                 "another release"),
+                ({"install": {"located": False, "flow_links": {"file": "links.csv"}}},
+                 "another linking"),
+            ):  # fmt: skip
+                if written is not None:
+                    record.write_text(json.dumps(written))
+                with self.assertRaisesRegex(account.ChainError, said):
+                    account.chain(
+                        comparison, records, scores, names, {}, steps, reach, units,
+                        world=world, candidate=provider,
+                    )  # fmt: skip
+            record.write_text(json.dumps({"patched": False, "install": {"located": False}}))
             data = account.chain(
                 comparison, records, scores, names, {}, steps, reach, units,
                 world=world, candidate=provider,
@@ -645,6 +665,51 @@ class Tables(unittest.TestCase):
         narrowed = {method: {} for method in reach}
         with self.assertRaisesRegex(account.ChainError, "outside the reach of every step"):
             account.chain(comparison, records, scores, names, {}, steps, narrowed, units)
+
+    @unittest.skipUnless(
+        importlib.util.find_spec("sentier_diagnostics"), "needs sentier-diagnostics"
+    )
+    def test_the_chain_and_the_comparison_count_what_nothing_explains_by_one_rule(self):
+        """The comparison judges every value above its threshold, however small. The chain
+        must not set such a value aside as "near zero", nor take the comparison's label
+        "unexplained" for a step that reaches it."""
+        import pandas as pd
+        from release_build import diagnostics_account as account
+        from sentier_diagnostics import fileformat
+
+        comparison, records, _, names, steps, _, units = self.chain_inputs()
+        rows = compare.compare_rows(self.base, self.cand, self.steps)
+        seeds = compare.relevant_seeds(rows["rows"], self.effective, ["climate", "fossils"])
+        graph = compare.consumer_graph(self.base[1], self.cand[1])
+        index = pd.Index(["farm", "gas", "mix"], name="code")
+        before = pd.DataFrame(
+            {"climate": [300.0, 2.0, 1e-9], "fossils": [5.0, 36.0, 72.0]}, index=index
+        )
+        # "mix" goes from 1e-9 to 5e-9 in climate, and no step reaches it there. Beside
+        # "gas" (2.0, in the same unit) it lies far below 1 % of the median size, the floor
+        # sentier-diagnostics would set by itself.
+        after = pd.DataFrame(
+            {"climate": [1.0, 2.0, 5e-9], "fossils": [0.1, 0.0, 72.0]}, index=index
+        )
+        moved, reach = {}, {}
+        scores = compare.compare_scores(before, after, seeds, graph, names, moved, reach)
+        self.assertEqual(scores["unexplained_moves"], 1)
+        tiny = comparison | {"scores": scores}
+        tables = (before.to_dict(), after.to_dict())
+        data = account.chain(tiny, records, tables, names, {}, steps, reach, units)
+        self.assertEqual(fileformat.errors(data), [])
+        climate = data["counts"]["steps"]["fixes"]["climate"]["verdicts"]
+        self.assertEqual((climate["not claimed"], climate["as claimed"]), (1, 1))
+        # the comparison's label among the reach, as it is when a row is unexplained: the
+        # value is still not claimed
+        labelled = {m: by | {account.UNEXPLAINED: {"mix"}} for m, by in reach.items()}
+        again = account.chain(tiny, records, tables, names, {}, steps, labelled, units)
+        self.assertEqual(again["counts"]["steps"]["fixes"]["climate"]["verdicts"]["not claimed"], 1)
+        # and the two counts must be equal: a comparison that calls one value unexplained
+        # where the chain finds none outside a reach is refused as well
+        wider = {m: by | {AMOUNT: {"farm", "mix"}} for m, by in reach.items()}
+        with self.assertRaisesRegex(account.ChainError, "0 values moved outside"):
+            account.chain(tiny, records, tables, names, {}, steps, wider, units)
 
     def test_scores_are_read_exactly_on_both_sides(self):
         import tempfile
