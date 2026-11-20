@@ -104,6 +104,21 @@ class CountingTests(unittest.TestCase):
             self.assertEqual(below + above, 8, f"{low} and {high} are mirror images")
 
 
+class PageScriptTests(unittest.TestCase):
+    def test_a_count_from_a_breakdown_file_is_escaped_before_it_goes_into_the_page(self):
+        """A breakdown file is fetched by the page, and a sibling site may take this script
+        with files of its own. `grouped()` turns its argument into text and escapes nothing,
+        so in a line that builds HTML it is wrapped in `esc()`."""
+        import re
+
+        script = (ROOT / "site/assets/before-after.js").read_text()
+        self.assertIn("esc(grouped(entry.parts_not_listed))", script)
+        for line in script.splitlines():
+            if "grouped(" in line and re.search(r"'<[a-z]", line):  # the line builds HTML
+                bare = re.findall(r"(?<!esc\()grouped\(", line)
+                self.assertEqual(bare, [], line.strip()[:120])
+
+
 class ShapeTests(unittest.TestCase):
     def test_a_comparison_a_run_wrote_is_one_a_page_can_show(self):
         self.assertEqual(before_after.shape_errors(a_comparison()), [])
