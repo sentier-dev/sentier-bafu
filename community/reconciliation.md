@@ -1,16 +1,23 @@
 # Reconciliation receipt: findings and community patches, 21 October 2026
 
+> **Historical receipt.** It describes the reconciliations of 21 October and 4 November 2026.
+> Since 13 November 2026 each finding is one record in [findings/](findings/README.md). A record holds the
+> dated evidence (report, second measurement, BAFU's answer, correction) and the next action; its status is
+> computed from that evidence, and community patches are listed in [patches.json](patches.json).
+> `reconciliation.json` is retired.
+> `python3 scripts/community.py check` validates the records.
+
 This receipt accounts for every finding (F1–F17, and since 4 November F19, F21
 and F29–F31) and contribution (C001, C002)
 against the public metadata of the
 [bafu-community-fixes](https://github.com/sentier-dev/bafu-community-fixes)
 patches at revision `053c799`. The records themselves are in
-[reconciliation.json](reconciliation.json); `scripts/community.py check` keeps them
-consistent with the [findings ledger](findings.md). It delivers
+`reconciliation.json` (retired); `scripts/community.py check` keeps them
+consistent with the [findings](findings/README.md). It delivers
 [#22](https://github.com/sentier-dev/sentier-bafu/issues/22).
 
-Provider responses are cited as the patches record them ("Marine Manche, BAFU
-(email, 12 October 2026)"); no correspondence is reproduced. A provider
+Provider responses are cited as the patches record them ("BAFU (email,
+12 October 2026)"); no correspondence is reproduced. A provider
 confirmation is not a provider adoption: on 21 October no finding was
 `upstream-fixed`, because no official BAFU release containing a correction had
 been verified. F17 became `upstream-fixed` on 4 November (below).
@@ -50,7 +57,7 @@ The patches and BAFU's confirmation are recorded as separate fields.
 ## Still unresolved
 
 Every record that is not withdrawn names a next action, a review role and an
-evidence link in [reconciliation.json](reconciliation.json). In short:
+evidence link in `reconciliation.json` (retired). In short:
 
 | Next action | Role | Records |
 |---|---|---|

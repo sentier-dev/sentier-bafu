@@ -1,8 +1,10 @@
 """Apply community patches to the BAFU EcoSpold 1 database."""
 
 import argparse
+import json
 import logging
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 from bafu_community_fixes.compliance import ComplianceError
@@ -17,7 +19,10 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="bafu-fixes", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("list", help="List import fixes and patches")
+    list_p = sub.add_parser("list", help="List import fixes and patches")
+    list_p.add_argument(
+        "--json", action="store_true", help="As JSON, with who is behind each, for other tools"
+    )
 
     run_p = sub.add_parser("run", help="Import, fix and patch an EcoSpold 1 file or directory")
     run_p.add_argument(
@@ -53,6 +58,13 @@ def main(argv: list[str] | None = None) -> None:
         metavar="HTML",
         help="Write an HTML report of what changed, who authorised it, and how much",
     )
+    run_p.add_argument(
+        "--summary",
+        type=Path,
+        metavar="JSON",
+        help="Write a summary: counts, checksums and the steps that changed each dataset; "
+        "no data from the release",
+    )
     defaults = DEFAULT_PLACEHOLDERS
     group = run_p.add_argument_group("placeholders for missing required data")
     group.add_argument("--placeholder-year", type=int, default=defaults.year, metavar="YEAR")
@@ -64,6 +76,21 @@ def main(argv: list[str] | None = None) -> None:
     run_p.add_argument("-v", "--verbose", action="store_true")
 
     args = parser.parse_args(argv)
+    if args.command == "list" and args.json:
+        steps = [("import fix", fix) for fix in IMPORT_FIXES]
+        steps += [("patch", p) for p in available_patches()]
+        listing = [
+            {
+                "id": step.id,
+                "kind": kind,
+                "description": step.description,
+                **asdict(step.provenance),
+                "source": "src/" + step.func.__module__.replace(".", "/") + ".py",
+            }
+            for kind, step in steps
+        ]
+        print(json.dumps(listing, indent=2, ensure_ascii=False))
+        return
     if args.command == "list":
         print("Import fixes (always applied, in order):")
         for fix in IMPORT_FIXES:
@@ -71,7 +98,8 @@ def main(argv: list[str] | None = None) -> None:
         print("Patches:")
         for p in available_patches():
             authorised = p.provenance.authorised_by or "NOT YET AUTHORISED"
-            print(f"  {p.id}\t{p.description}\t[{authorised}]")
+            findings = ", ".join(p.provenance.findings) or "no finding"
+            print(f"  {p.id}\t{p.description}\t[{authorised}]\t{findings}")
         return
 
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
@@ -98,6 +126,7 @@ def main(argv: list[str] | None = None) -> None:
             xsd_check=args.xsd_check,
             report=args.report,
             placeholders=placeholders,
+            summary=args.summary,
         )
     except (EcoSpoldError, ComplianceError, PatchError) as e:
         if args.report:
@@ -106,6 +135,8 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Wrote {log.written} file(s) to {args.destination}")
     if args.report:
         print(f"Report written to {args.report}")
+    if args.summary:
+        print(f"Summary written to {args.summary}")
 
 
 if __name__ == "__main__":
