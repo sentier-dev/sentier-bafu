@@ -5,8 +5,9 @@ says where each tool reads and writes, and records what full runs measured on 13
 2026. It covers the provider release (BAFU:2026 v1 as BAFU ships it) and the patched copy
 (the same release with the import fixes and community patches of this repository).
 
-The path uses three tools that were written separately. It runs end to end, with one adapter
-between the patch tool and the importer. Both builds pass their audit. In the patched build
+The path uses three tools that were written separately: the patch tool and the Brightway
+installer, which are now the two packages of this repository, and sentier-importers. It runs
+end to end, with one adapter between the patch tool and the importer. Both builds pass their audit. In the patched build
 the scores of three datasets differ from the provider build, in every method: the strawberry
 datasets that patch 0001 corrects.
 
@@ -14,16 +15,29 @@ datasets that patch 0001 corrects.
 `bafu-2026`, BAFU's name. A patched copy is installed as `bafu-2026-v1-patched`, and its
 metadata carries the label "Modified Data", the patch ids and the import fix ids.
 
-**Which flow links the scores use.** Scores come through sentier-mappings, the route
-sentier-brightway installs: each BAFU flow is relinked to the EF 3.1 flow the mapping names,
+**Which flow links the scores use.** Scores come through sentier-mappings, the route the
+installer takes by default: each BAFU flow is relinked to the EF 3.1 flow the mapping names,
 with the mapping's conversion factor. Each elementary exchange is linked on the flow as BAFU
 declared it. Where a patch corrects a flow's name or compartment, the corrected name becomes
 the exchange's label and both are listed beside the data; the link does not change. The
 Brightway Flows identifiers that patch 0010 writes on every elementary exchange are identity
-links. They are not used for scores, and they are never joined to a factor table keyed by
-EF 3.1 identifiers: many of them name flows outside EF 3.1. The mapping is taken at
-sentier-mappings `179aab3`, one commit after sentier-brightway's pin, because it corrects
-BAFU's `Chlorine` to air (high population).
+links. By default they are not used for scores, and they are never joined to a factor table
+keyed by EF 3.1 identifiers: many of them name flows outside EF 3.1. The mapping is taken at
+sentier-mappings `179aab3`, which corrects BAFU's `Chlorine` to air (high population). The
+build's pins (`src/bafu_brightway/sources.toml`) name that commit, so `bafu-brightway` run
+on its own and the build read the same mapping. They are this repository's pins: the
+installer has pins of its own, which move with it, and the build does not read those.
+
+**A flow that names a country takes that country's factor** (since 15 November 2026). BAFU
+has 238 elementary flows with a country in their name, such as `Water, CH`. The mapping
+states the country, and the methods hold factors of single countries, for water use mostly.
+The build brings the two together for 184 of those flows; every other flow takes the factor
+without a location. See "Flows that name a country" below.
+
+**The build can also link through those identifiers** (`build --linking brightway-flows`,
+since 15 November 2026). It is a second way to build. The whole path runs under it, and it
+is not the build's own: 165 flows lose a factor under it, and nothing built with it is kept
+under a tag. See "The second linking: through Brightway Flows" below.
 
 ## Run it
 
@@ -41,10 +55,16 @@ python3 scripts/build_release.py build path/to/bafu-2026-v1 output/patched
 python3 scripts/build_release.py compare output/provider output/patched --out output/comparison.json
 ```
 
-`build` needs Python 3.12 or newer, `uv` and `git`. It clones sentier-importers and
-sentier-brightway at the commits in `scripts/release_build/pins.toml` (or uses checkouts given
-with `--tools`), runs each in its own `uv` environment, and writes everything under the output
-folder. Options:
+`build` needs Python 3.12 or newer, `uv` and `git`. It clones sentier-importers at the commit
+in `scripts/release_build/pins.toml` (or uses a checkout given with `--tools`) and runs it in
+an environment of its own. The Brightway installer is sentier-brightway, a dependency of
+this project's `brightway` extra, pinned by commit; this repository ships no copy of it.
+What the build adds to it is the second package of this repository beside the patch tool
+(`src/bafu_community_fixes`, `src/bafu_brightway`; see
+[brightway-installer.md](brightway-installer.md)). The build runs them, and its own helpers,
+in the repository's one locked environment with the `brightway` extra. Everything is written under the output folder. Both packages are at this
+repository's commit: a build from a tree with local changes says so in `build.json`, and
+`--allow-unpinned` is about the checkout of sentier-importers only. Options:
 
 - `build latest OUT` lets the patch tool download and check BAFU's release first.
 - `--published-results FILE` adds the comparison with BAFU's published LCIA results. The
@@ -52,6 +72,8 @@ folder. Options:
   skipped and says so.
 - `--pinned-data` lets several builds share one copy of the pinned flow terms, methods and
   mapping.
+- `--linking brightway-flows` links the elementary flows the second way (below). `release`
+  takes it too and hands it to both builds.
 - `--fail-on-findings` turns the audit's findings into a failed build.
 - `--sample FILE` names other datasets for the audit to score.
 - `--contribution LAYER` builds the patched copy plus one contribution, as a database of
@@ -64,7 +86,8 @@ database. It is under [BAFU's Terms of Use](terms-of-use.md): keep it local (`ou
 ignored by git). A CI job may keep `audit/audit.json` and the comparison, which hold counts,
 dataset codes, names and single scores. It must not upload the folder.
 
-`OUT/build.json` records the tool commits, the data pins, each step's time and peak memory,
+`OUT/build.json` records the tool commits, the data pins, how the flows were linked
+(`linking`) and the installer's options (`install`), each step's time and peak memory,
 the audit's errors and findings, and under `export` what an export of the database needs:
 the Brightway folder, the project, the three database names, the run summary of the patch
 tool (`release-summary.json`, which the build asks for and keeps), the table of labels, and
@@ -73,9 +96,10 @@ tool (`release-summary.json`, which the build asks for and keeps), the table of 
 ### Tests
 
 `python3 -m unittest discover -s release-build-tests` runs the tests on synthetic data. Tests
-that need pandas, SciPy or bw2data are skipped where those are missing; run them in the
-sentier-brightway environment to run all but one, and in this package's environment to run
-the one that checks the adapter against the patch tool's output.
+that need pandas, SciPy, bw2data or the patch tool are skipped where those are missing. In
+this repository's environment with the `brightway` extra none of them is missing
+(`uv sync --locked --extra brightway`, then `uv run --no-sync python -m unittest discover -s
+release-build-tests`).
 
 The whole path runs on a made-up release of eight datasets (`synthetic_release.py`), from
 the one command to the manifest: both builds with scores checked against hand-worked values,
@@ -104,14 +128,15 @@ comparisons, and nothing that holds the inventory. See [The whole path](release-
 | 2. adapt | `scripts/release_build/adapter.py` | that folder, and for a patched copy the provider release | zip the importer can read, receipt |
 | 3. import | `sentier-importers run bafu-processes`, `run bafu-exchanges` | zip at a fixed path below its data root | `processes.parquet`, `exchanges.parquet` |
 | 4. label | `scripts/release_build/label_release.py` (patched copy only) | the two tables, the receipt | the tables under the patched copy's name, `source-observations.json` |
-| 5. data | `scripts/release_build/data_root.py` | sentier-brightway's pins | flow terms, methods and mapping, checked by SHA-256 |
-| 6. install | `sentier-brightway db` | a data root with four folders | three Brightway databases, 25 methods |
+| 5. data | `scripts/release_build/data_root.py` | the installer's pins (`sources.toml`) | flow terms, methods and mapping, checked by SHA-256 |
+| 6. install | `bafu-brightway db` | a data root with four folders | three Brightway databases, 25 methods |
 | 7. mark | `scripts/release_build/mark_database.py` | the build's record | what the database was built from, in its metadata |
 | 8. audit | `scripts/release_build/audit_brightway.py` | the Brightway project | `audit.json`, `scores.csv` |
-| 9. published | `sentier-brightway backtest` (with `--published-results`) | the data root, BAFU's workbook | `published-results.json` |
+| 9. published | `bafu-brightway backtest` (with `--published-results`) | the data root, BAFU's workbook | `published-results.json` |
 
-File and line references below are to sentier-importers at `28b28ed`, sentier-brightway at
-`90d57eb` and this repository's package as merged with #40.
+File and line references below are to sentier-importers at `28b28ed`, to sentier-brightway
+at `90d57eb` (its code is the same at the commit this project pins) and to this repository's
+patch tool as merged with #40.
 
 ### 1. The patch tool
 
@@ -191,32 +216,36 @@ go into the receipt with the dataset and the position.
 
 ### 4. The pinned data
 
-sentier-brightway reads four folders below one data root (`constants.py:29-33`):
+The installer reads four folders below one data root (`constants.py:29-33`):
 `sentier-inventory`, `sentier-vocab` (flow terms), `sentier-methods` and `sentier-mappings`.
 Its `sources.toml` pins each file by commit and SHA-256. Without `--data-root` it downloads
 them into its cache (`fetch.py:120-139`); with `--data-root` it reads local folders and checks
-nothing. The build uses sentier-brightway's own reader to fetch and check the three folders
+nothing. The build uses the installer's own reader to fetch and check the three folders
 that are not the inventory (`fetch.py:92-113`), and puts the importer's output in the fourth.
 
-`pins.toml` can move one of the three to another commit, with the SHA-256 of each file that
-differs and a reason. It does so for sentier-mappings (see above). `build.json` lists the
-commit of each data source and says whether sentier-brightway or this build pinned it.
+`sources.toml` is the one place a data pin lives, and `build.json` lists the commit of each
+data source. While the installer was another repository, the build's `pins.toml` could move
+one of the three to another commit and did so for the mapping; two pins of one file could
+disagree, and a measurement of 15 November 2026 was first made on the wrong one. Since that
+day the installer's own pin names the mapping the build uses, and `pins.toml` names no data.
 
-Where BAFU is hard-coded in sentier-brightway: the default source `bafu-2026`
+Where BAFU is hard-coded in the installer: the default source `bafu-2026`
 (`constants.py:9`), the mapping folder `bafu-2026-v1__ef-3.1` (`:18`), the methods folder
 `01-ef-3.1` (`:20`) and the citation (`:23-27`). `--source` selects the inventory folder and
-names the databases (`constants.py:36-43`); the flow terms must carry the same source name
-(`flows.py:85-88`). For a patched copy the build therefore writes the provider's 2,679
-elementary flow terms again under the patched name. They are the same flows, because the
-exchanges are linked on the declared ones.
+names the databases (`constants.py:36-43`). By default the flow terms are looked up under the
+same source name (`flows.py:85-88`). A patched copy has its own name and the flows of BAFU's
+release, because its exchanges are linked on the declared ones; the build tells the installer
+so (`--flow-terms-of bafu-2026`), and the installer reads BAFU's 2,679 flow terms as they are
+pinned. Until 15 November 2026 the build wrote those terms a second time under the patched
+name.
 
 ### 5. The install and the marker
 
 - `load_inventory` picks the folder whose `metadata.json` names the source
   (`inventory.py:141-161`). `load_bridge` reads the mapping's `replace` entries in package
   order, first entry wins (`bridge.py:125-136`). `load_methods` reads the factors that have no
-  location (`methods.py:80`), so country-specific factors, for water use for example, are not
-  installed.
+  location, which every flow takes, and the factors of single countries, which a flow takes
+  only where it names the country (`located.py`; see "Flows that name a country").
 - Every exchange is linked while the nodes are built (`build.py:219-235`): the product to its
   own dataset, a technosphere input to the dataset its `flow` names, an elementary exchange to
   the EF 3.1 flow the mapping gives for its flow identifier, multiplied by the mapping's
@@ -225,10 +254,11 @@ exchanges are linked on the declared ones.
 - A technosphere input that names no dataset stops the build (`build.py:241-276`).
 - `writer.write` writes `ef-3.1-biosphere`, `bafu-2026-residual` and `bafu-2026`, then the 25
   methods under `("sentier", "EF v3.1", …)` (`writer.py:45-69`, `:81-102`).
-- `sentier-brightway files` writes the same build as parquet tables and bw_processing
+- `bafu-brightway files` writes the same build as parquet tables and bw_processing
   datapackages (`files.py:111-130`). `scripts/audit_registry.py` in this repository audits
   that export.
-- sentier-brightway writes nothing into the database about where its data came from.
+- The installer writes nothing into the database about where its data came from: it
+  installs any source, and what a build did to BAFU's release is the build's to say.
   `mark_database.py` adds the key `release_build` to the metadata of the inventory database
   and of the database of flows without an EF 3.1 flow: the label ("Modified Data" or
   "Provider release"), BAFU's credit, the fingerprints of the provider release and of the
@@ -237,13 +267,14 @@ exchanges are linked on the declared ones.
 
 ### What the comparison with BAFU's published results does
 
-`sentier-brightway backtest` scores every dataset in the 25 categories from the files export
+`bafu-brightway backtest` scores every dataset in the 25 categories from the files export
 with one transposed solve per category (`backtest/scorer.py:145-175`) and compares with BAFU's
 LCIA results workbook, sheet `BAFU_2026 v1` (`backtest/reference.py:62-120`). Rows are joined
 by dataset name and location (`backtest/compare.py:23`, `:191`); the workbook's
 `RER without CH` is read as `Europe without Switzerland` (`:72`). The patched copy writes
-`EURwoCH`, so 26 of its datasets are not joined. With `--published-results` the build runs
-it and `published_results.py` writes, per category, how many datasets were compared, the
+`EURwoCH` for that location, and its 26 datasets there are joined under BAFU's spelling
+(since 15 November 2026; before, they were left out). With `--published-results` the build
+runs it and `published_results.py` writes, per category, how many datasets were compared, the
 share within 1 % and within 5 %, and the median difference. Matching BAFU's published
 results is not a goal; the step shows what a build changes.
 
@@ -280,12 +311,12 @@ is in the script; a step that starts to change something else shows up as unexpl
 ## What the runs of 13 November 2026 measured
 
 Four full runs of both builds. The numbers below are from the last one, with the tools and
-data in `pins.toml`. The first three linked elementary exchanges on the flow as patched; what
+data that were pinned then. The first three linked elementary exchanges on the flow as patched; what
 that did is under [Before the declared flow was used](#before-the-declared-flow-was-used).
 
 Both builds: 11,947 datasets; 11,947 production, 114,369 technosphere and 293,747 elementary
 exchanges; no unlinked exchange; audit passed. The provider release's inventory tables equal
-the ones sentier-inventory publishes at the commit sentier-brightway pins, row for row, so the
+the ones sentier-inventory publishes at the commit the installer pins, row for row, so the
 adapter changes nothing the importer reads.
 
 | | Provider release | Patched copy |
@@ -345,12 +376,13 @@ on the declared flow and stay on the EF 3.1 flow they have in the provider relea
   values are inside.
 - No other score moves. Below the tolerance of 1e-6, the largest difference between the two
   builds is 3e-16, and between two builds of the same release 8e-12.
-- sentier-brightway documents one score, 0.0320835 kg CO2 eq per kWh for
+- sentier-brightway's README documented one score, 0.0320835 kg CO2 eq per kWh for
   `Electricity, low voltage, production CH, at grid`. Both builds reproduce it.
 
 ### The mapping commit
 
-Moving the mapping from sentier-brightway's pin (`5ba4acd`) to `179aab3` changes one entry,
+Moving the mapping from `5ba4acd`, the installer's pin until 15 November 2026, to `179aab3`
+changes one entry,
 `Chlorine` to air (high population), used by 410 exchanges. On the provider release it moves
 scores in the three freshwater ecotoxicity methods and in no other: by more than 1 % for 3
 datasets in the total, 20 in the inorganics part and 1,120 in the organics part.
@@ -361,7 +393,7 @@ Both builds were compared with BAFU's corrected LCIA results workbook (July 2026
 
 | | Provider release | Patched copy |
 |---|---|---|
-| datasets joined by name and location | 11,947 | 11,921 (26 are now `EURwoCH`) |
+| datasets joined by name and location | 11,947 | 11,921 (26 are `EURwoCH`, and were not joined then) |
 | climate change within 1 % | 99.98 % | 99.96 % |
 | Resource use, fossils within 1 % | 97.75 % | 97.72 % |
 | Resource use, fossils, median difference | −0.07 % | −0.07 % |
@@ -402,8 +434,170 @@ Over the four runs the whole build took 109 to 194 s (provider) and 275 to 370 s
 A first `data` step downloads 25 files, 37 MB; that took 12 s. The whole path on the made-up
 release took 126 s and 1,005 MB, most of it the install of the EF 3.1 flows and methods.
 
+## Flows that name a country
+
+BAFU's elementary exchanges carry no location. 238 of BAFU's 2,679 elementary flows carry
+one in their name instead: `Water, CH`, `Water, AT`,
+`Occupation, traffic area, rail network, CH`. The mapping of sentier-mappings links such a
+flow to its EF 3.1 flow and states the country beside it. sentier-methods holds, beside the
+factors without a location, 42,689 factors of single countries in 11 of the 25 methods.
+
+The installer reads only the factors without a location, so on its own it scores `Water,
+CH` like water anywhere. `src/bafu_brightway/located.py` adds the step: a linked flow that names a country for which a
+method has that country's factor is linked to the flow of that country: a node of its own
+in `ef-3.1-biosphere`, named like the flow with the country added, with the country as its
+`location`. It takes the country's factor in every method that has one, and the flow's
+factor without a location in every other method.
+
+A flow that names no country keeps the factor without a location, whatever the location
+of the dataset it is in. Nothing says where such an exchange takes place, and BAFU's own
+results read it the same way: in acidification and terrestrial eutrophication, where the
+methods hold factors of 36 countries, 99.33 % and 99.05 % of the build's scores equal
+BAFU's published ones to 0.01 %.
+
+### What it changes, measured on 15 November 2026
+
+`scripts/compare_located_factors.py` builds BAFU's release with and without the factors of
+countries and scores all 11,947 datasets. The record is
+`community/runs/factors-of-countries-2026-11-15.json`.
+
+| | |
+|---|---:|
+| Flows that name a country | 238 |
+| of which take a factor of their country | 184 (4,251 exchanges, 74 countries) |
+| of which name a country no method has a factor for | 54 |
+| Flows of a country they end on (an EF 3.1 flow in one country) | 183 |
+| of which have the country's factor in water use | 181 |
+| of which have the country's factor in land use | 2 |
+
+- **Water use moves for 5,197 of the 11,947 datasets** by more than 1 %, for 854 of them by
+  more than 10 %. 5,118 go down and 58 go up: a country's factor is mostly lower than the
+  factor without a location. For 21 the score is zero to the precision of the solve on both
+  sides (1e-17 beside a median of 0.05), and no direction is given: its sign is not the same
+  on two machines. The directions were counted again on 20 November 2026, by the value of
+  the score and above a stated floor; the record says how.
+- **Land use moves for 5 datasets**, all upwards and by more than 10 %: two flows of rail
+  land in Switzerland.
+- **No other category moves.**
+
+Against BAFU's corrected results workbook (July 2026), which is not a goal to match and is
+a second reading of what such a flow means:
+
+| | Factors without a location only | With the factors of countries |
+|---|---:|---:|
+| Water use within 1 % of BAFU's | 30.94 % | 53.84 % |
+| Water use within 5 % | 65.45 % | 79.52 % |
+| Water use, median difference | +2.20 % | +0.86 % |
+| Land use within 1 % | 99.09 % | 99.05 % |
+
+Water use comes much closer. Land use moves away for the five datasets: for the two flows
+of rail land, BAFU's results follow the factor without a location.
+
+`bafu-brightway db --skip-located` builds as before, and so do `build_release.py build
+--skip-located` and `build_release.py release --skip-located`, which hand the switch to the
+installer for both builds. A build records under `install.located` whether its flows took
+the factors of countries, and its label says "the world's factors" when they did not.
+Without the switch the countries' factors are on, for water use and for land use alike.
+
+## The second linking: through Brightway Flows
+
+`build --linking brightway-flows` links every elementary exchange to the flow of Brightway
+Flows that patch 0010's crosswalk names for it, in place of the mapping of sentier-mappings.
+`src/bafu_brightway/brightway_flows.py` does it (`bafu-brightway db --flow-links FILE`),
+before the installer builds; the rest of the build is the same. Three
+statements are kept apart, each taken from where it is made:
+
+| Statement | Taken from | Where it is not stated |
+|---|---|---|
+| Which flow it is | the crosswalk of patch 0010, with the identifier the flow has in Brightway Flows 1.1.0 | the flow stays on BAFU's flow, without a factor |
+| How an amount converts | the multiplier Brightway Flows 1.1.0 states for the link (192 links; 159 of them Bq to kBq) | two spellings of one unit need none; otherwise the conversion is unknown and the flow is not linked |
+| What the flow costs | the build's own methods (sentier-methods). A flow outside EF 3.1 takes the build's factors of the one flow that Brightway Flows' own implementation of EF 3.1 names as their source, where the two are counted in one unit | the flow has no factor |
+| Which country the flow names | the mapping of sentier-mappings. The links end `Water, CH` and `Water` on one flow and state no country | the flow takes the factor without a location |
+
+No factor is read from Brightway Flows. What the installer needs beside the crosswalk is in
+`scripts/release_build/brightway-flows-targets-bafu-2026-v1.csv`, written by
+`scripts/build_brightway_flows_targets.py` from two files of Brightway Flows 1.1.0 on Zenodo,
+checked by their MD5. The file is derived from Brightway Flows and is under the Open Database
+License 1.0, like the crosswalk. The notice that says so is beside it
+(`brightway-flows-targets-bafu-2026-v1.csv.NOTICE.md`). A build of the second linking keeps
+the file as `flow-links.csv` with the notice beside it, and the installer copies both into
+`mappings/brightway-flows/` of a files export.
+
+A flow that BAFU keeps in the compartment `economic issues` is an entry of account and no
+exchange with the environment, and is not linked: `Water, embodied in product, CH` and the
+same for ES, KE, MX and PE (13 exchanges). The crosswalk ends them on the water flow, where
+they would take a water use factor. Measured on 20 November 2026 on the twelve datasets that
+these five flows move and that BAFU published a result for: without a factor, all twelve are
+closest to BAFU's published water use (eight within 0.1 %, the largest difference 1.25 %);
+with the factor without a location the largest difference is 173 %, with the country's own
+factor 5.6 %. The mapping of sentier-mappings does not link them either. The numbers of
+15 November below were measured before this: with it, 2,672 flows and 293,623 exchanges are
+linked, and three flows gain a factor, not eight.
+
+A linked flow that the mapping does not hold, on a flow that has factors of single
+countries, may name a country that nobody states. No country is read from a flow's name;
+the install report names such flows. BAFU:2026 v1 has none once the five above are left
+unlinked.
+
+A flow of EF 3.1 that the pinned flow terms and methods do not hold (38 of BAFU's flows end
+on one) gets a node with the name the link gives it. A node of a flow that is reached from
+several of BAFU's flows says where the flow goes as far as those flows agree.
+
+### What it changes, measured on 15 November 2026
+
+`scripts/compare_flow_linkings.py` builds BAFU's release both ways, on the data the build
+uses (the mapping at `179aab3`), and scores all 11,947 datasets in the 25 categories. The
+record is `community/runs/flow-linking-in-the-build-2026-11-15.json`. A flow "has a factor"
+in a method when the flow it is linked to has one there that is not zero. Both ways give a
+flow that names a country its country's factor (184 flows under the mapping, 183 under the
+links).
+
+| | Mapping of sentier-mappings | Links of patch 0010 |
+|---|---:|---:|
+| Flows linked, of 2,679 | 2,566 | 2,677 |
+| Elementary exchanges linked, of 293,747 | 284,443 | 293,636 |
+| Flows with a factor in at least one method | 1,950 | 1,794 |
+
+- **The links reach more flows.** Only two stay unlinked: mine gas in m3 and in Nm3, whose
+  target is in sm3, with no conversion stated.
+- **Fewer flows end on a factor.** 165 flows (13,868 exchanges, 4.7 % of all) lose a factor
+  in at least one method, 164 of them in every method; 8 gain one.
+- **Those flows are in most supply chains.** 11,801 of the 11,947 datasets move by more than
+  1 % in at least one category: particulate matter (11,446 datasets), freshwater
+  eutrophication (11,636), freshwater ecotoxicity (10,144) and land use (11,132). Nearly all
+  move downwards; in land use, 1,374 of the 11,132 move up. Acidification and terrestrial
+  eutrophication do not move for any dataset; climate change moves for 20.
+
+Why the 165 lose a factor:
+
+| Flows | Exchanges | Why |
+|---:|---:|---|
+| 92 | 7,602 | The flow is outside EF 3.1, and Brightway Flows names no flow as the source of factors. BAFU's own land classes are among them. |
+| 55 | 4,086 | Brightway Flows adopts or restates a factor from another implementation's list. The source it names is a flow of that list, which the build's methods do not hold. |
+| 13 | 1,891 | The link ends on an EF 3.1 flow that has no factor there in the build's methods. |
+| 2 | 111 | Not linked: the conversion is unknown. |
+| 2 | 90 | Brightway Flows names two flows as the source. |
+| 1 | 88 | The named source has no factor there in the build's methods. |
+
+So the mapping stays the build's linking. What would let the links take over is listed
+under "What is missing".
+
+A first run of this measurement, shown on the page for some hours on 15 November, used the
+installer's own pin of the mapping (`5ba4acd`) and gave 166 flows; the entry that differs
+is BAFU's chlorine to air.
+
 ## What is missing
 
+0. **The links of patch 0010 are not the build's linking yet.** 165 flows lose a factor
+   (above). 92 of them need a source of factors in Brightway Flows, which is a change there.
+   55 depend on which factors count for a flow outside EF 3.1: the build's own, as now, or
+   those of Brightway Flows' own implementation. That is a decision for people. The whole
+   path runs under the second linking since 15 November 2026 (`release --linking
+   brightway-flows`): the comparison of two builds explains each score with the links that
+   were installed, whichever linking that was, and the exports are written and read back.
+   Nothing built with it is kept under a tag. The data file of the second linking is derived
+   from Brightway Flows 1.1.0 (ODbL); the permission recorded for the crosswalk has not been
+   asked for it.
 1. **The mapping does not know the corrected flow names.** The build does not need it to,
    because it links on the declared flow. A consumer that reads the patched copy without
    the provider release beside it does: the patched copy does not carry the declared name,
@@ -416,20 +610,32 @@ release took 126 s and 1,005 MB, most of it the install of the EF 3.1 flows and 
    when tried.
 3. **The importer writes no `metadata.json` from its command line**, and has no way to point
    at a release file other than the fixed path below its data root.
-4. **sentier-brightway names the database after the source and looks up flow terms of that
-   same source.** The build writes the provider's flow terms again under the patched name. A
-   database name independent of the source would make that unnecessary.
+4. *(Closed on 15 November 2026.)* The installer looked up flow terms under the name of the
+   inventory's source, so the build wrote the provider's flow terms again under the patched
+   name. The installer now takes the source of the flow terms as an option, and the build
+   reads its linking report from a file the installer writes, not from what it printed.
 5. **The patch tool's run summary says which fields a step changed, not which rows.** The
    comparison attributes changed rows with a table of what each known step may change,
    checked against the data on every run; a step that is not in the table (a new patch) is
    explained from the fields the run summary says it changed. A list of the changed rows
    themselves would make the attribution exact.
-6. **sentier-brightway's export manifest names its own pins** even when `--data-root` supplies
-   other data, so the files export behind the comparison with BAFU's results misstates the
-   inventory and the mapping commit. `build.json` holds the pins that were used.
-7. **26 datasets of a patched copy are not joined to BAFU's published results**, because
-   the comparison does not know `EURwoCH`.
-8. **Only global factors are installed**, and only EF 3.1. Uncertainty is carried into the
-   Brightway database but not into the files export.
-9. **Nothing has run on GitHub.** The workflow passes actionlint and its steps were run
-   locally as written, on macOS.
+6. *(Closed on 15 November 2026.)* The manifest of a files export named the installer's own
+   pins even when `--data-root` supplied other data, so the export behind the comparison
+   with BAFU's results misstated the inventory. The installer now records which files it
+   reads. The manifest names a source's commit only where every file read is a pinned file
+   with the pinned SHA-256; for any other source it lists the files read with their SHA-256
+   and no commit. For a build that means: flow terms, methods and mapping as pinned, and the
+   inventory as the three files the build made.
+7. *(Closed on 15 November 2026.)* 26 datasets of a patched copy were not joined to BAFU's
+   published results, because the comparison did not know `EURwoCH`, the patched copy's
+   spelling of `Europe without Switzerland`. They are joined now, and the run report counts
+   them (`own_location_spellings_joined`).
+8. *(Closed in part on 15 November 2026.)* Only factors without a location were installed.
+   A flow that names a country now takes that country's factor ("Flows that name a
+   country"). What stays: a flow that names no country takes the factor without a location
+   whatever the location of its dataset, because nothing says where such an exchange takes
+   place; only EF 3.1 is installed; and uncertainty is carried into the Brightway database
+   but not into the files export.
+9. *(Closed.)* The build's workflow has run on GitHub's runners since 13 November 2026, in a
+   fork: fifteen runs on BAFU's full release up to 15 November. In this repository it is not
+   on `main` yet.

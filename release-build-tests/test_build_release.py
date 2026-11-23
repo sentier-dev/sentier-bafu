@@ -5,8 +5,11 @@ test files and by a full run on the release.
 """
 
 import argparse
+import contextlib
 import importlib.util
+import io
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -39,6 +42,29 @@ def options(**values) -> argparse.Namespace:
 
 
 class Plan(unittest.TestCase):
+    def test_a_build_takes_the_countries_factors_unless_it_is_told_not_to(self):
+        """A flow that names a country takes that country's factor. For land use that is
+        further from BAFU's published results, so the build has the installer's switch."""
+        self.assertTrue(build_release.plan(options())["located"])
+        self.assertTrue(build_release.plan(options(skip_located=False))["located"])
+        for no_patches, said in (
+            (False, "patched copy (community patches applied), the world's factors"),
+            (True, "provider release, the world's factors"),
+        ):
+            paths = build_release.plan(options(no_patches=no_patches, skip_located=True))
+            self.assertFalse(paths["located"])
+            self.assertEqual(paths["label"], said)
+        parser = build_release.arguments()
+        build = parser.parse_args(["build", "release", "out", "--skip-located"])
+        whole = parser.parse_args(["release", "release", "out", "--skip-located"])
+        self.assertTrue(build.skip_located and whole.skip_located)
+        self.assertFalse(parser.parse_args(["release", "release", "out"]).skip_located)
+        # the whole path hands the switch to both builds, and a build to the installer
+        source = (REPOSITORY / "scripts" / "build_release.py").read_text()
+        self.assertIn('options += ["--skip-located"] if args.skip_located else []', source)
+        self.assertEqual(source.count('*([] if paths["located"] else ["--skip-located"]),'), 2)
+        self.assertIn('"located": paths["located"],', source)
+
     def test_a_patched_build_is_named_as_patched(self):
         paths = build_release.plan(options())
         self.assertTrue(paths["patched"])
@@ -123,25 +149,73 @@ class Plan(unittest.TestCase):
 
 
 class Pins(unittest.TestCase):
-    def test_both_tools_are_pinned_by_full_commit(self):
+    def test_the_importer_is_the_one_pinned_checkout(self):
         pins = build_release.load_pins()
-        self.assertEqual(set(pins), {"sentier-importers", "sentier-brightway"})
-        for pin in pins.values():
-            self.assertRegex(pin["commit"], r"^[0-9a-f]{40}$")
-            self.assertTrue(pin["repository"].startswith("https://github.com/sentier-dev/"))
+        self.assertEqual(set(pins), {"sentier-importers"})
+        importer = pins["sentier-importers"]
+        self.assertRegex(importer["commit"], r"^[0-9a-f]{40}$")
+        self.assertTrue(importer["repository"].startswith("https://github.com/sentier-dev/"))
+
+    def test_the_installer_is_a_package_of_this_repository(self):
+        import tomllib
+
+        project = tomllib.loads((build_release.REPOSITORY / "pyproject.toml").read_text())
+        # one project and one lock. The installer is sentier-brightway, a dependency of the
+        # extra the build asks for, pinned by commit; this repository ships no copy of it,
+        # neither its package nor its command. What the build adds is a package of its own.
+        modules = project["tool"]["uv"]["build-backend"]["module-name"]
+        self.assertEqual(modules, ["bafu_community_fixes", "bafu_brightway"])
+        extra = project["project"]["optional-dependencies"][build_release.Project.extra]
+        pinned = [line for line in extra if line.startswith("sentier-brightway @ ")]
+        self.assertEqual(len(pinned), 1)
+        self.assertRegex(pinned[0], r"sentier-dev/sentier-brightway@[0-9a-f]{40}$")
+        scripts = project["project"]["scripts"]
+        self.assertNotIn("sentier-brightway", scripts)
+        self.assertEqual(scripts["bafu-brightway"], "bafu_brightway.cli:main")
+        self.assertFalse((build_release.REPOSITORY / "src" / "sentier_brightway").exists())
+        package = build_release.REPOSITORY / "src" / "bafu_brightway"
+        self.assertTrue((package / "sources.toml").is_file())
+        # no project of its own: neither the old folder nor a project file beside the code
+        self.assertFalse((build_release.REPOSITORY / "brightway-installer").exists())
+        for name in ("pyproject.toml", "uv.lock"):
+            self.assertTrue((build_release.REPOSITORY / name).is_file())
+            self.assertEqual(list((build_release.REPOSITORY / "src").glob(f"**/{name}")), [])
+        pins = (build_release.HELPERS / "pins.toml").read_text()
+        self.assertNotIn("[data.", pins)  # the data is pinned in sources.toml, and only there
 
     def test_the_tool_command_runs_in_the_locked_environment(self):
         pin = {"commit": "0" * 40, "python": "3.12", "extra": "testing", "repository": "x"}
-        tool = build_release.Tool("sentier-brightway", pin, Path("/tools/sb"), Path("/venvs"))
+        tool = build_release.Tool("sentier-importers", pin, Path("/tools/si"), Path("/venvs"))
         self.assertEqual(
-            tool.command("sentier-brightway", "db"),
+            tool.command("sentier-importers", "run"),
             [
-                *("uv", "run", "--frozen", "--project", "/tools/sb"),
-                *("--python", "3.12", "--extra", "testing", "sentier-brightway", "db"),
+                *("uv", "run", "--frozen", "--project", "/tools/si"),
+                *("--python", "3.12", "--extra", "testing", "sentier-importers", "run"),
             ],
         )
-        self.assertEqual(tool.env(), {"UV_PROJECT_ENVIRONMENT": "/venvs/sentier-brightway"})
+        self.assertEqual(tool.env(), {"UV_PROJECT_ENVIRONMENT": "/venvs/sentier-importers"})
         self.assertEqual(build_release.Tool("t", pin, Path("/tools/t"), None).env(), {})
+
+    def test_this_repositorys_steps_run_in_its_one_environment(self):
+        project = build_release.Project(Path("/venvs"))
+        repository = str(build_release.REPOSITORY)
+        for command in (("bafu-fixes", "run"), ("bafu-brightway", "db")):
+            # the patch tool and the installer: the same project, lock and extra
+            self.assertEqual(
+                project.command(*command),
+                [
+                    "uv",
+                    "run",
+                    "--frozen",
+                    "--project",
+                    repository,
+                    "--extra",
+                    "brightway",
+                    *command,
+                ],
+            )
+        self.assertEqual(project.env(), {"UV_PROJECT_ENVIRONMENT": "/venvs/sentier-bafu"})
+        self.assertEqual(build_release.Project(None).env(), {})
 
 
 class Checkout(unittest.TestCase):
@@ -211,16 +285,19 @@ class Steps(unittest.TestCase):
             result = build_release.run(command, log=Path(temp) / "step.log", accept=(0, 1))
             self.assertEqual(result["returncode"], 1)
 
-    def test_the_linking_report_is_taken_from_the_install_log(self):
+    def test_the_linking_report_is_the_file_the_installer_wrote(self):
         with tempfile.TemporaryDirectory() as temp:
-            log = Path(temp) / "install.log"
-            log.write_text(
-                "writing method 1/25\r 50%|#\nInstalled bafu-2026: 2 processes\n\nLinked 1/2\n"
-            )
-            self.assertEqual(
-                build_release._coverage_lines(log),
-                ["Installed bafu-2026: 2 processes", "Linked 1/2"],
-            )
+            report = Path(temp) / "install-report.json"
+            lines = ["Installed bafu-2026: 2 processes", "Linked 1/2"]
+            report.write_text(json.dumps({"linking": "sentier-mappings", "lines": lines}))
+            self.assertEqual(build_release._linking_report(report), lines)
+            # what the installer printed is not read: no report, or one without lines, stops
+            report.write_text(json.dumps({"lines": "Installed"}))
+            with self.assertRaisesRegex(build_release.BuildError, "holds no lines"):
+                build_release._linking_report(report)
+            report.unlink()
+            with self.assertRaisesRegex(build_release.BuildError, "wrote no report"):
+                build_release._linking_report(report)
 
 
 class WholePathRecord(unittest.TestCase):
@@ -428,7 +505,7 @@ class BuildRecords(unittest.TestCase):
             "import_fixes": {"renumber-exchanges": 3},
             "record_of_changes": ["release-report.html"],
         },
-        "tools": {"this repository": "c", "sentier-importers": "d", "sentier-brightway": "e"},
+        "tools": {"this repository": "c", "sentier-importers": "d"},
         "databases": {"no_ef_3_1_flow": "bafu-2026-v1-patched-residual"},
         "data_pins": [{"name": "sentier-mappings", "commit": "f" * 40}],
     }
@@ -445,6 +522,86 @@ class BuildRecords(unittest.TestCase):
         self.assertIn("3 elementary exchanges", steps[1]["description"])
         for step in steps:  # the shape an export step reads
             self.assertTrue({"id", "kind", "description"} <= set(step))
+
+    def test_the_build_says_which_way_the_flows_were_linked(self):
+        receipt = build_release.adapter.Receipt(datasets=7)
+        by_mapping = build_release._build_steps(self.record, receipt, Path("inventory"))[0]
+        self.assertIn("through sentier-mappings at ffffffffffff", by_mapping["description"])
+        linked = self.record | {"linking": "brightway-flows"}
+        step = build_release._build_steps(linked, receipt, Path("inventory"))[0]
+        # the same step, with what this linking does: which flow, which conversion, which factors
+        self.assertEqual(step["id"], "build-ef-3.1-links")
+        for words in (
+            "through the links of patch 0010",
+            "only where Brightway Flows states the conversion",
+            "takes the factors of the EF 3.1 flow",
+            "bafu-2026-v1-patched-residual",
+        ):
+            self.assertIn(words, step["description"])
+        self.assertNotIn("sentier-mappings at", step["description"])
+        # either way, a flow that names a country takes that country's factor
+        for record in (self.record, linked):
+            said = build_release._build_steps(record, receipt, Path("inventory"))[0]
+            self.assertIn("takes that country's factor", said["description"])
+
+    def test_the_mapping_is_the_default_and_the_other_linking_has_its_file(self):
+        parser = build_release.arguments()
+        plain = parser.parse_args(["build", "release", "out"])
+        self.assertEqual(plain.linking, "sentier-mappings")
+        chosen = parser.parse_args(["build", "release", "out", "--linking", "brightway-flows"])
+        self.assertEqual(chosen.linking, "brightway-flows")
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["build", "release", "out", "--linking", "something-else"])
+        # the whole path takes the option too, and hands it to both builds
+        whole = parser.parse_args(["release", "release", "out"])
+        self.assertEqual(whole.linking, "sentier-mappings")
+        whole = parser.parse_args(["release", "release", "out", "--linking", "brightway-flows"])
+        self.assertEqual(whole.linking, "brightway-flows")
+        # the file is committed, one row for each row of the crosswalk patch 0010 uses
+        crosswalk = (
+            build_release.REPOSITORY
+            / "src/bafu_community_fixes/data/brightway-flows-crosswalk-bafu-2026-v1.csv"
+        )
+        self.assertTrue(build_release.FLOW_LINKS.is_file())
+        self.assertEqual(
+            len(build_release.FLOW_LINKS.read_text().splitlines()),
+            len(crosswalk.read_text().splitlines()),
+        )
+        # the file is under the Open Database License, not the repository's licence: the
+        # notice that says so is beside it, under the name the installer looks for
+        notice = build_release.FLOW_LINKS_NOTICE
+        self.assertEqual(notice.name, build_release.FLOW_LINKS.name + ".NOTICE.md")
+        text = notice.read_text()
+        self.assertIn("Open Database License 1.0", text)
+        self.assertIn("https://opendatacommons.org/licenses/odbl/1-0/", text)
+        # the release the file is built from, as the script that builds it pins it, and the
+        # release of the crosswalk it is built on
+        targets = (REPOSITORY / "scripts" / "build_brightway_flows_targets.py").read_text()
+        crosswalk = (REPOSITORY / "scripts" / "build_brightway_flows_data.py").read_text()
+        for script, release in ((targets, "1.1.0"), (crosswalk, "1.0.0")):
+            (doi,) = set(re.findall(r'ZENODO_DOI = "(10\.5281/zenodo\.\d+)"', script))
+            self.assertIn(f"release {release}\n(https://doi.org/{doi})", text)
+
+    def test_the_comparison_refuses_two_builds_of_different_linkings(self):
+        with tempfile.TemporaryDirectory() as temp:
+            mapped, linked = Path(temp) / "provider", Path(temp) / "patched"
+            for folder, linking in ((mapped, "sentier-mappings"), (linked, "brightway-flows")):
+                folder.mkdir()
+                (folder / "build.json").write_text(json.dumps({"linking": linking}))
+            self.assertEqual(build_release.linking_of(mapped), "sentier-mappings")
+            self.assertEqual(build_release.linking_of(linked), "brightway-flows")
+            # a build from before the option says nothing, and was linked through the mapping
+            (mapped / "build.json").write_text("{}")
+            self.assertEqual(build_release.linking_of(mapped), "sentier-mappings")
+            out = str(Path(temp) / "comparison.json")
+            for pair in ((mapped, linked), (linked, mapped)):
+                with contextlib.redirect_stderr(io.StringIO()) as said:
+                    arguments = ["compare", str(pair[0]), str(pair[1]), "--out", out]
+                    code = build_release.main(arguments)
+                self.assertEqual(code, 1)
+                self.assertIn("through brightway-flows", said.getvalue())
+                self.assertIn("two builds of one linking", said.getvalue())
+            self.assertFalse(Path(out).exists())
 
     def test_a_contribution_says_whether_somebody_authorised_it(self):
         self.assertEqual(
