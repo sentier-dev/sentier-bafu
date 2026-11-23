@@ -85,6 +85,9 @@ KEPT_FLOW_LINKS = "flow-links.csv"
 # What the comparison of two builds writes for the site, beside its own file
 # (scripts/runrecord/before_after.py)
 BEFORE_AFTER = "before-after.json"
+# and the same, as a chain of states in the format of sentier-diagnostics: BAFU's release with
+# the world's factors, with the countries' factors, and the patched copy
+DIAGNOSTICS = "diagnostics.json"
 # and, for a run that also built contributions, the builds and the pairs that were compared
 # (scripts/runrecord/review.py)
 REVIEW = "review.json"
@@ -854,6 +857,9 @@ def compare(args: argparse.Namespace) -> int:
         *("--out", str(args.out.resolve())),
         # what moved, dataset by dataset, in the format the site shows
         *("--before-after", str(args.out.resolve().with_name(BEFORE_AFTER))),
+        # and as a chain of states, in the format of sentier-diagnostics
+        *("--diagnostics", str(args.out.resolve().with_name(DIAGNOSTICS))),
+        *(["--world-factors", str(args.world_factors.resolve())] if args.world_factors else []),
     )
     done = subprocess.run(command, env={**os.environ, **project.env()})
     return done.returncode
@@ -865,6 +871,7 @@ def compare(args: argparse.Namespace) -> int:
 # What each step of the whole path does, in the words the run prints when it starts one.
 STEP_SAYS = {
     "provider build": "a Brightway database of BAFU's release, as it is",
+    "world factors build": "BAFU's release once more, every flow on the world's factor",
     "patched build": "the import fixes and the community patches, then a database of the result",
     "written files": "every file that was written, read again",
     "patch run": "what each patch matched",
@@ -1101,11 +1108,19 @@ def release(args: argparse.Namespace) -> int:
         return True
 
     provider, patched = out / "provider", out / "patched"
+    world = out / "world-factors"
     summary = patched / "release-summary.json"
     step(
         "provider build",
         [*entry, "build", str(source), str(provider), "--no-patches", *options],
         reason=lambda: _build_reason(provider),
+    )
+    # BAFU's release once more, every flow on the world's factor: the state before the
+    # countries' factors, so that the comparison shows what they change, with their claim
+    step(
+        "world factors build",
+        [*entry, "build", str(source), str(world), "--no-patches", "--skip-located", *options],
+        reason=lambda: _build_reason(world),
     )
     step(
         "patched build",
@@ -1136,6 +1151,7 @@ def release(args: argparse.Namespace) -> int:
     step(
         "comparison",
         [*entry, "compare", str(provider), str(patched), "--out", str(out / "comparison.json")]
+        + (["--world-factors", str(world)] if scored(world) else [])
         + shared,
         ready=scored(provider) and scored(patched),
         why="a build has no audited database to compare",
@@ -1205,6 +1221,8 @@ def release(args: argparse.Namespace) -> int:
         "patched-audit.json": patched / "audit" / "audit.json",
         "comparison.json": out / "comparison.json",
         BEFORE_AFTER: out / BEFORE_AFTER,
+        DIAGNOSTICS: out / DIAGNOSTICS,
+        "world-factors-audit.json": world / "audit" / "audit.json",
         "exports-manifest.json": out / "exports" / "patched" / "manifest.json",
     }
     for _, contribution in contributions:
@@ -1213,6 +1231,7 @@ def release(args: argparse.Namespace) -> int:
         keep[f"{name}-audit.json"] = folder / "build" / "audit" / "audit.json"
         keep[f"{name}-comparison.json"] = folder / "comparison.json"
         keep[f"{name}-{BEFORE_AFTER}"] = folder / BEFORE_AFTER
+        keep[f"{name}-{DIAGNOSTICS}"] = folder / DIAGNOSTICS
         keep[f"{name}-exports-manifest.json"] = folder / "exports" / "manifest.json"
     if review_of(out, provider, patched, contributions, summary):
         keep[REVIEW] = out / REVIEW
@@ -1397,6 +1416,13 @@ def arguments() -> argparse.ArgumentParser:
     c.add_argument("baseline", type=Path, help="Build folder of the provider release")
     c.add_argument("candidate", type=Path, help="Build folder of the patched copy")
     c.add_argument("--out", type=Path, required=True, help="JSON file to write")
+    c.add_argument(
+        "--world-factors",
+        type=Path,
+        metavar="BUILD",
+        help="Build folder of BAFU's release with the world's factors (build --skip-located): "
+        "the comparison then shows the countries' factors as a step of their own",
+    )
     common(c)
     c.set_defaults(run=compare)
     return parser

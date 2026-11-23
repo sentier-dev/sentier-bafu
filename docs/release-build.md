@@ -22,6 +22,7 @@ folder, which holds BAFU's inventory and stays local.
 | Step | What it does | It fails when |
 |---|---|---|
 | provider build | BAFU's release as it is: adapter, importer, Brightway database `bafu-2026` with the EF 3.1 methods, audit | a step of the build stops, or the audit has an error. Findings on BAFU's own release are reported and do not fail |
+| world factors build | BAFU's release once more (`build --no-patches --skip-located`): every elementary flow on its world-wide factor, also one that names a country. The state before the countries' factors. For information only: nothing that is kept depends on it. If it fails, the run says so, the comparison is made without that state, and the run is judged without it (`FOR_INFORMATION` in `release_manifest.py`) | as the provider build |
 | patched build | import fixes and community patches, then the same; database `bafu-2026-v1-patched`, marked Modified Data | a patch stops, the result is not valid EcoSpold 1, the audit has an error or a finding |
 | written files | every written file against the EcoSpold 1 schema, and the file set against the run summary | a file is invalid, or the files are not the ones the summary describes |
 | patch run | the table of the patch run, and what each patch matched now and in the previous tagged build | the release is not a known one, a step stopped, or a patch changes nothing |
@@ -267,6 +268,42 @@ against the patched copy with that contribution (`<contribution>-before-after.js
 `review.json`: the builds of the run, what each contains, and the pairs that were compared.
 The site then has a page on which a reader picks a contribution and is shown the two builds
 that differ by exactly it.
+
+**The same comparison as a chain of states** (`diagnostics.json`, written by
+`scripts/release_build/diagnostics_account.py` in the format of
+[sentier-diagnostics](https://github.com/sentier-dev/sentier-diagnostics)): BAFU's release
+with the world's factors, then with the countries' factors, then the patched copy. Each value
+of every dataset in every impact category gets one class by that repository's counting rule,
+and each step is held against its claim:
+
+- **The countries' factors.** A flow that names a country takes that country's own factor.
+  The claim is read from the build, not typed: the categories in which a country's own factor
+  is used (`coverage.located_by_method` of the install report). On BAFU:2026 v1 those are water
+  use (181 flows of a country) and land use (2): "water use and land use may move; nothing else
+  moves". So the countries' factors change no score silently: what they move is shown as a
+  step of its own.
+- **The import fixes and patches**, applied together. The claim is the comparison's reach, as
+  above, published as a count. The file is refused if it finds a value moved outside every
+  reach where the comparison found none unexplained.
+
+Noise belongs to a state: what two builds of it differ by. A step is compared with the noise
+of its two states. No state is built twice in a run, so each state says its noise was not
+measured, and so does each step.
+
+Scores are read exactly, as they were written, in this file and in `comparison.json` alike.
+pandas' default CSV reader reads about half of the 298,675 scores of BAFU:2026 v1 one bit off,
+which merges distinct results: read that way, patch 0001 changes 79 results bit for bit; read
+exactly, 86. What is counted as moved does not change, since a score moves only above 1e-6 of
+it (75 either way), and a smaller change is "agrees" in the chain, bit-identical or not. What
+changes is the count of differences below that threshold in `comparison.json` (4 before, 11),
+and which results a local matrix marks as bit-identical to the state before, which a file of
+fixes is measured on.
+
+A contribution's file (`<contribution>-diagnostics.json`) is the patched copy, then the
+patched copy with that contribution. The package is pinned in `pyproject.toml` to the commit
+of its `main` where its first version was merged, until it is tagged. The site does not show the file yet: its page is being
+built in sentier-diagnostics, from the trial dashboard of sentier-bafu-agribalyse, and until
+then `before-after.json` and its page stay as they are.
 
 Two builds are compared only if a difference between them can be a step's: both linked their
 elementary flows the same way, both or neither gave the flows that name a country that

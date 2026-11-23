@@ -297,9 +297,19 @@ def worked(record):
     here = [s for s in steps if s["status"] == "not run here"]
     wrong = [s for s in steps if s["status"] not in NO_FAILURE]
     if account["status"] == "completed" and conclusion == "success":
-        counted = f"All {len(done)} steps completed" if len(done) == len(steps) else f"{len(done)} of {len(steps)} steps completed, and none failed"
+        # a run can complete with a failed step: one that is for information and that the result does not depend on
+        aside = [s for s in steps if s["status"] == "failed"]
+        if len(done) == len(steps):
+            counted = f"All {len(done)} steps completed"
+        else:
+            counted = f"{len(done)} of {len(steps)} steps completed" + ("" if aside else ", and none failed")
         elsewhere = f" {plural(len(here), 'step was', 'steps were')} not run here." if here else ""
-        return "yes", f"<strong>Yes.</strong> {counted}" + (f", in {time}." if time else ".") + elsewhere
+        said = (
+            f" {plural(len(aside), 'step')} failed that the result does not depend on: "
+            + ", ".join(f"<strong>{esc(s['name'])}</strong>" for s in aside) + "."
+            if aside else ""
+        )
+        return "yes", f"<strong>Yes.</strong> {counted}" + (f", in {time}." if time else ".") + said + elsewhere
     if account["status"] == "completed":
         return "no", (f"<strong>No.</strong> The {plural(len(done), 'step')} of the run completed, "
                       f"but GitHub records that the run {ended}{at}.")

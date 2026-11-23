@@ -69,6 +69,7 @@ brightway = [
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "sentier-brightway" },
+    { name = "sentier-diagnostics" },
 ]
 
 [package.dev-dependencies]
@@ -92,6 +93,7 @@ requires-dist = [
     { name = "pyarrow", marker = "extra == 'brightway'", specifier = ">=14" },
     { name = "pydantic", specifier = ">=2.14.1" },
     { name = "sentier-brightway", marker = "extra == 'brightway'", git = "https://github.com/sentier-dev/sentier-brightway?rev=54861b306b631a02774576b52643471bfe2ed8c0" },
+    { name = "sentier-diagnostics", marker = "extra == 'brightway'", git = "https://github.com/sentier-dev/sentier-diagnostics?rev=117a586db3aa0bc30fbf87502b656bead5b7edc4" },
     { name = "textual", specifier = ">=8.2.8" },
 ]
 provides-extras = ["brightway"]
@@ -1139,6 +1141,11 @@ dependencies = [
     { name = "platformdirs" },
     { name = "pyarrow" },
 ]
+
+[[package]]
+name = "sentier-diagnostics"
+version = "0.1.0"
+source = { git = "https://github.com/sentier-dev/sentier-diagnostics?rev=117a586db3aa0bc30fbf87502b656bead5b7edc4#117a586db3aa0bc30fbf87502b656bead5b7edc4" }
 
 [[package]]
 name = "six"

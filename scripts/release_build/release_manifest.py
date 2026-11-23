@@ -77,6 +77,11 @@ PATCH_KEYS = (
 FIX_KEYS = ("id", "description", "result", "datasets_changed", "values_changed")
 OPTION_KEYS = ("XSD schema check", "extensions in output", "only patches", "skipped patches")
 RESULTS = ("applied", "not needed", "failed")
+#: Steps whose result nothing that is kept depends on. The comparison is the gate of a run;
+#: a step named here adds a reading beside it (the chain's state "the world's factors").
+#: When it fails, the run says so and is judged without it: the manifest is not `failed`
+#: on its account, and the comparison is made without what the step would have added.
+FOR_INFORMATION = frozenset({"world factors build"})
 MAX_BYTES = 8_000_000
 #: What the manifest says of its export files: they are kept only for a tag.
 NOT_PUBLISHED = (
@@ -447,7 +452,7 @@ def manifest(
     problems = [
         f"step {step['name']} {step['status']}: {step.get('reason') or 'see its log'}"
         for step in steps or ()
-        if step["status"] not in ("completed", "skipped")
+        if step["status"] not in ("completed", "skipped") and step["name"] not in FOR_INFORMATION
     ]
     problems += unreadable
     if summary is None:

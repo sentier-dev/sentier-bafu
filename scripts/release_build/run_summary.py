@@ -22,6 +22,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from runrecord import summary  # noqa: E402
 
+from release_build import release_manifest  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 CLOSING = "Build {status}:"  # how the line begins that a build prints after its last step
 EXPORT_NAMES = {
@@ -245,6 +247,18 @@ def from_manifest(manifest, names=None) -> dict:
             summary.MAX_TEXT,
         )
         for kind, entry in sorted(held.items())
+    ]
+    # A step that is for information and did not complete is said: the run is judged
+    # without it, so its status alone would read as a contradiction.
+    remarks += [
+        quoted(
+            f'The step "{step["name"]}" {step["status"]}. It is for information only: '
+            "nothing that is kept depends on it, and the run is judged without it.",
+            summary.MAX_TEXT,
+        )
+        for step in manifest["steps"]
+        if step["name"] in release_manifest.FOR_INFORMATION
+        and step["status"] not in ("completed", "skipped")
     ]
     steps = [
         summary.step(
