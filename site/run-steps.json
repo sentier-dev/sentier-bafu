@@ -36,6 +36,16 @@
       "title": "The two databases, compared",
       "text": "Every exchange of BAFU's release is compared with the patched one, and every score under each impact method. Each difference must be explained by an import fix or a patch that the run recorded on that dataset. A difference that nothing explains stops the run."
     },
+    "fix builds": {
+      "short": "Each fix alone",
+      "title": "Each fix, built on its own",
+      "text": "The import fixes are built alone, and each patch whose changes reach a score is built alone with them. The comparison before says which patches do: a patch that changes no amount, flow or supplier a score is computed from has nothing to measure and is not built again. This step and the next are for information: if one fails, the run says so and is judged without it."
+    },
+    "fixes": {
+      "short": "Fixes one by one",
+      "title": "Each fix, measured on its own",
+      "text": "Each fix is measured against BAFU's release as it is, so that any set of fixes can be shown with what it changes. The build with every fix must agree with the fixes, score by score, or this step fails. The file holds a score for every dataset, so it stays on the machine that built it; the run shows its counts."
+    },
     "exports": {
       "short": "Files for LCA tools",
       "title": "Files for LCA tools",

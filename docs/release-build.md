@@ -27,6 +27,8 @@ folder, which holds BAFU's inventory and stays local.
 | written files | every written file against the EcoSpold 1 schema, and the file set against the run summary | a file is invalid, or the files are not the ones the summary describes |
 | patch run | the table of the patch run, and what each patch matched now and in the previous tagged build | the release is not a known one, a step stopped, or a patch changes nothing |
 | comparison | patched against provider: every changed row and every moved score attributed to a step | a changed row or a moved score has no explanation |
+| fix builds | the import fixes alone (`build --skip <every patch>`), and each patch whose changes reach a score alone with them (`build --only <patch>`), two at a time; also a patch that the comparison passed over for a row a score follows, in favour of a narrower patch on the same dataset (`scores.passed_over` of the comparison). For information only, as the next step: a failure is said and does not fail the run | a build stops, or the comparison did not run to the end |
+| fixes | each fix measured on its own, in `local/fixes.json` beside the run's local chain and its matrix. For information only | a fix that was built has no results, or the build with every fix does not agree with the fixes |
 | exports | Brightway package, openLCA JSON-LD, ILCD and SimaPro CSV of the patched database, and the patched files again as ecoSpold v1 with the label, each read back | a format can't be written, or reads back differently. The other formats are still written and checked |
 | per contribution | build beside the patched copy, comparison with it, exports | as above, for the contribution's own database |
 | manifest | `manifest.json` from what the steps left behind | never; a failed step is recorded in it |
@@ -45,7 +47,7 @@ the contributions; without either, every layer in `community/layers/` that names
 authorised it is built. A layer that nobody has authorised is listed as skipped; it is built
 only when it is named with `--contribution`.
 `--partial-release` is for a test release: that it is unknown and that patches find nothing
-to change in it does not fail the run.
+to change in it does not fail the run. `--no-fixes` builds no fix on its own.
 
 ## What the runs of 13 November 2026 measured
 
@@ -304,6 +306,29 @@ patched copy with that contribution. The package is pinned in `pyproject.toml` t
 of its `main` where its first version was merged, until it is tagged. The site does not show the file yet: its page is being
 built in sentier-diagnostics, from the trial dashboard of sentier-bafu-agribalyse, and until
 then `before-after.json` and its page stay as they are.
+
+**Each fix on its own** (`local/fixes.json`, written by
+`scripts/release_build/fixes_account.py` in the format `sentier-diagnostics-fixes/1`). The
+chain above has one step for all the fixes together. A reader who wants to know what one patch
+does, or any set of them, needs each fix measured on its own. The file holds:
+
+- **the base**: BAFU's release as it is, the chain's state "before";
+- **the import fixes, as one fix** (`import-fixes`): they are applied before any patch, so
+  every patch requires them. They are built alone, and on BAFU:2026 v1 they change no score;
+- **each patch**, with what it changes against the import fixes alone. A patch is built alone
+  with the import fixes only if the comparison finds that its changes reach a score
+  (`datasets_that_could_move`). On BAFU:2026 v1 that is patch 0001 only. The other ten change
+  names, numbers, flags and locations that no score is computed from, so their effect is empty,
+  and the file says why;
+- **the build with every fix**, held to the chain's state "after" and to the sum of the fixes;
+- **the pairs of fixes that can interact**: two patches whose reaches overlap, with the kind of
+  change that meets. Patches whose reaches do not overlap add up exactly.
+
+The file holds a result for every dataset, and so does the chain it hangs on
+(`local/diagnostics.json`, with its matrix `local/matrix.json`). They stay in `local/`, which
+is never kept: like the inventory, they stay on the machine that built them. The run prints
+their counts. The page that lets a reader tick any set of fixes is being built in
+sentier-diagnostics; until it reads this file, the site shows only the counts the run printed.
 
 Two builds are compared only if a difference between them can be a step's: both linked their
 elementary flows the same way, both or neither gave the flows that name a country that

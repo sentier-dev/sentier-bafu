@@ -796,6 +796,211 @@ class Tables(unittest.TestCase):
                 account.scores_of(build, ["climate"], ["farm"])["climate"]["farm"], exact
             )
 
+    @unittest.skipUnless(
+        importlib.util.find_spec("sentier_diagnostics"), "needs sentier-diagnostics"
+    )
+    def test_each_fix_on_its_own_is_a_file_of_fixes_on_the_local_chain(self):
+        from release_build import diagnostics_account as account
+        from release_build import fixes_account
+        from sentier_diagnostics import fixes, matrix
+
+        comparison, records, scores, names, steps, reach, units = self.chain_inputs()
+        data, full = account.chain(
+            comparison, records, scores, names, {}, steps, reach, units, local=True
+        )
+        # the local chain: every dataset in its matrix, each claim with its list
+        self.assertEqual(data["audience"], "local")
+        self.assertEqual(matrix.against(full, data), [])
+        self.assertEqual(data["steps"][0]["claim"]["scope"][0]["items"], ["farm"])
+        before, after = scores
+        summary = {
+            "steps": [
+                {"id": "location-codes", "kind": "import fix"},
+                {"id": AMOUNT, "kind": "patch", "description": "Correct the disposal."},
+                {"id": NAMES, "kind": "patch", "description": "Correct the names."},
+                {"id": LOCATION, "kind": "patch", "description": "Correct the locations."},
+            ]
+        }
+        # the comparison says which patches reach a result: those are built alone
+        planned = fixes_account.plan(summary, comparison)
+        self.assertEqual(
+            [(b["id"], b["skip"], b["only"]) for b in planned["builds"]],
+            [
+                ("import-fixes", [AMOUNT, NAMES, LOCATION], None),
+                (AMOUNT, None, [AMOUNT]),
+                (NAMES, None, [NAMES]),
+            ],
+        )
+        self.assertEqual(planned["not_built"], [LOCATION])
+        # the patch to the amount alone moves the fruit, the names alone the gas and the mix
+        alone_amount = {m: dict(v) for m, v in before.items()}
+        alone_names = {m: dict(v) for m, v in before.items()}
+        for method in before:
+            alone_amount[method]["farm"] = after[method]["farm"]
+            for code in ("gas", "mix"):
+                alone_names[method][code] = after[method][code]
+        index = {"builds": planned["builds"], "not_built": planned["not_built"]}
+
+        built = {"import-fixes": before, AMOUNT: alone_amount, NAMES: alone_names}
+
+        def made(every_fix=after, results=built):
+            return fixes_account.fixes_file(
+                data, full, summary, index,
+                results=results,
+                every_fix=every_fix,
+                claims_of={
+                    fixes_account.IMPORT_FIXES: fixes_account.claim_of({}, "Nothing moves.", "t"),
+                    AMOUNT: fixes_account.claim_of(
+                        fixes_account.step_reach(reach, {AMOUNT}), "The fruit may move.", "t"
+                    ),
+                    NAMES: fixes_account.claim_of(
+                        fixes_account.step_reach(reach, {NAMES}), "The gas may move.", "t"
+                    ),
+                },
+                pairs=[], tolerance=account.tolerance_of(comparison),
+            )  # fmt: skip
+
+        f = made()
+        self.assertEqual(fixes.errors(f), [])
+        self.assertEqual(fixes.against(f, data, full), [])
+        self.assertEqual(
+            [one["id"] for one in f["fixes"]], ["import-fixes", AMOUNT, NAMES, LOCATION]
+        )
+        self.assertTrue(all(one["requires"] == ["import-fixes"] for one in f["fixes"][1:]))
+        # the base is BAFU's release, whose noise was not measured, and the release is the
+        # chain's state after it
+        self.assertEqual((f["of"]["base"], f["of"]["base_noise"]["measured"]), ("before", False))
+        self.assertEqual([(b["id"], b["state"]) for b in f["built"]], [("patched", "after")])
+        effect = {one["id"]: one["effect"] for one in f["fixes"]}
+        self.assertEqual(effect["import-fixes"], {"climate": [], "fossils": []})
+        self.assertEqual(effect[LOCATION], {"climate": [], "fossils": []})
+        self.assertEqual(len(effect[AMOUNT]["climate"]), 1)
+        # a patch alone is a build; two that were checked and are no pair add up exactly
+        self.assertEqual(fixes.label(f, [AMOUNT]), fixes.BUILT)
+        self.assertEqual(fixes.label(f, [AMOUNT, NAMES]), fixes.EXACT)
+        self.assertEqual(fixes.chosen(f, [AMOUNT])[1], ["import-fixes"])
+        both = fixes.compose(f, [AMOUNT, NAMES])["results"]
+        # results are in the matrix's order of items, the worst first
+        farm = [item[0] for item in full["items"]].index("farm")
+        self.assertEqual(both["climate"][farm], after["climate"]["farm"])
+        # a patched copy that is not the sum of its fixes is refused: two fixes called
+        # independent are not
+        wrong = {m: dict(v) for m, v in after.items()}
+        wrong["climate"]["farm"] = 7.0
+        with self.assertRaisesRegex(
+            ValueError, "built set 'patched'.*independent, and they are not"
+        ):
+            made(every_fix=wrong)
+        # also far below the size of the other values: every value is judged, with no floor
+        # (the sum of the effects gives 1.0 for the fruit, the built copy says 2.9)
+        small = {m: dict(v) for m, v in after.items()}
+        small["climate"]["farm"] = 2.9
+        with self.assertRaisesRegex(
+            ValueError, "built set 'patched'.*independent, and they are not"
+        ):
+            made(every_fix=small)
+        # results of a patch that was not built alone are refused
+        with self.assertRaisesRegex(fixes_account.FixesError, "not built alone"):
+            made(results=built | {LOCATION: before})
+
+    def test_what_a_patch_changes_counts_only_the_rows_a_score_follows(self):
+        """`changes_of`, on the made-up tables with their three patches: the amount patch
+        changes an input, the names patch elementary flows, and the location patch only a
+        field no score is computed from."""
+        from release_build import fixes_account
+
+        rows = compare.compare_rows(self.base, self.cand, self.steps)["rows"]
+        amount = fixes_account.changes_of(rows, {AMOUNT})
+        names = fixes_account.changes_of(rows, {NAMES})
+        location = fixes_account.changes_of(rows, {LOCATION})
+        self.assertTrue(amount["rows"] and amount["technosphere"] and not amount["emission"])
+        self.assertTrue(names["rows"] and names["emission"] and not names["technosphere"])
+        self.assertFalse(amount["rows"] & names["rows"])
+        # the location patch did change rows, and none of them is one a score follows
+        self.assertTrue(any(LOCATION in found for _, found in rows))
+        self.assertEqual(location, {"rows": set(), "technosphere": False, "emission": False})
+        both = fixes_account.changes_of(rows, {AMOUNT, NAMES})
+        self.assertEqual(both["rows"], amount["rows"] | names["rows"])
+        self.assertTrue(both["technosphere"] and both["emission"])
+        # with two patches at hand, the pairs are found from what each changes and reaches
+        changes = {AMOUNT: amount, NAMES: names}
+        apart = {AMOUNT: {"farm"}, NAMES: {"gas", "mix"}}
+        self.assertEqual(fixes_account.pairs_of([AMOUNT, NAMES], apart, changes), [])
+        meeting = {AMOUNT: {"farm", "mix"}, NAMES: {"gas", "mix"}}
+        self.assertEqual(len(fixes_account.pairs_of([AMOUNT, NAMES], meeting, changes)), 1)
+
+    def test_a_patch_that_was_passed_over_for_a_row_a_score_follows_is_built_alone(self):
+        """The comparison names the narrowest patch that fits a changed row, by dataset. A
+        wider patch on the same dataset could have made the change too. Where the row is one
+        a score follows, the comparison says that it passed the patch over, and the plan
+        builds it alone: its effect is measured and not declared empty."""
+        from release_build import fixes_account
+
+        fields = compare.step_fields(None) | {
+            "0001-a": {"exchange": {"amount"}, "process": set()},
+            "0009-b": {"exchange": {"amount", "flow"}, "process": set()},
+        }
+        chosen = compare.explain({"amount"}, ["0001-a", "0009-b"], "exchange", fields)
+        self.assertEqual(chosen, ["0001-a"])
+        self.assertEqual(
+            compare.could_explain({"amount"}, ["0001-a", "0009-b"], "exchange", fields),
+            ["0001-a", "0009-b"],
+        )
+        # on the made-up tables no dataset has two patches that fit one row
+        rows = compare.compare_rows(self.base, self.cand, self.steps)
+        self.assertEqual(rows["passed_over"], [])
+        # with a wider patch recorded on every dataset the amount patch changed, the row of
+        # the amount is passed over for it, and it is a row scores follow
+        wider = {AMOUNT: fields[AMOUNT], "0009-wider": fields["0009-b"]} | fields
+        steps = {code: [*found, "0009-wider"] for code, found in self.steps.items()}
+        rows = compare.compare_rows(self.base, self.cand, steps, wider)
+        self.assertTrue(rows["passed_over"])
+        self.assertTrue(all(also == ["0009-wider"] for _, also in rows["passed_over"]))
+        seeds = compare.relevant_seeds(rows["passed_over"], self.effective, ["climate", "fossils"])
+        self.assertEqual(compare.passed_over_seeds(seeds), {"0009-wider": 1})
+        # the plan: the comparison's reach, and what it passed over
+        comparison = self.chain_inputs()[0]
+        summary = {
+            "steps": [
+                {"id": "location-codes", "kind": "import fix"},
+                {"id": AMOUNT, "kind": "patch"},
+                {"id": "0009-wider", "kind": "patch"},
+                {"id": LOCATION, "kind": "patch"},
+            ]
+        }
+        plain = fixes_account.plan(summary, comparison)
+        self.assertEqual([b["id"] for b in plain["builds"]], ["import-fixes", AMOUNT])
+        self.assertEqual(plain["built_although_no_reach"], {})
+        said = comparison | {"scores": comparison["scores"] | {"passed_over": {"0009-wider": 1}}}
+        planned = fixes_account.plan(summary, said)
+        self.assertEqual(
+            [b["id"] for b in planned["builds"]], ["import-fixes", AMOUNT, "0009-wider"]
+        )
+        self.assertEqual(planned["built_although_no_reach"], {"0009-wider": 1})
+        self.assertEqual(planned["not_built"], [LOCATION])
+
+    def test_two_patches_are_a_pair_where_their_changes_meet(self):
+        from release_build import fixes_account
+        from sentier_diagnostics import fixes
+
+        a = {"rows": {("farm", 1)}, "technosphere": True, "emission": False}
+        b = {"rows": {("gas", 1)}, "technosphere": False, "emission": True}
+        c = {"rows": {("mix", 2)}, "technosphere": False, "emission": True}
+        same = {"rows": {("farm", 1)}, "technosphere": True, "emission": False}
+        self.assertEqual(fixes_account.pair_kind(a, same), fixes.SAME_ENTRY)
+        self.assertEqual(fixes_account.pair_kind(a, b), fixes.TECHNOSPHERE_AND_EMISSION)
+        # two changes to amounts of elementary flows in different rows add up exactly
+        self.assertIsNone(fixes_account.pair_kind(b, c))
+        changes = {"a": a, "b": b, "c": c}
+        # a pair only where what the two reach overlaps
+        reach = {"a": {"farm"}, "b": {"gas", "mix"}, "c": {"mix"}}
+        self.assertEqual(fixes_account.pairs_of(["a", "b", "c"], reach, changes), [])
+        reach["b"] = {"gas", "farm"}
+        self.assertEqual(
+            fixes_account.pairs_of(["a", "b", "c"], reach, changes),
+            [fixes.pair("a", "b", fixes.TECHNOSPHERE_AND_EMISSION)],
+        )
+
     def test_a_contribution_is_compared_with_the_patched_copy_under_its_own_name(self):
         from release_build import before_after_account
 

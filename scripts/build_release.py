@@ -56,6 +56,7 @@ import subprocess
 import sys
 import time
 import tomllib
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -88,6 +89,12 @@ BEFORE_AFTER = "before-after.json"
 # and the same, as a chain of states in the format of sentier-diagnostics: BAFU's release with
 # the world's factors, with the countries' factors, and the patched copy
 DIAGNOSTICS = "diagnostics.json"
+# Each fix on its own: the builds of the import fixes alone and of each patch that reaches a
+# result alone (scripts/release_build/fixes_account.py), and the folder of the files that hold
+# a result for every dataset (the chain with its matrix, and the file of fixes). That folder
+# is never kept: like the inventory, it stays on the machine that built it.
+FIX_BUILDS = "fix-builds"
+LOCAL = "local"
 # and, for a run that also built contributions, the builds and the pairs that were compared
 # (scripts/runrecord/review.py)
 REVIEW = "review.json"
@@ -865,6 +872,81 @@ def compare(args: argparse.Namespace) -> int:
     return done.returncode
 
 
+def fix_builds(args: argparse.Namespace) -> int:
+    """Build each fix on its own: the import fixes alone, and each patch whose changes reach a
+    result (in the comparison of BAFU's release with the build with every fix) alone with the
+    import fixes. The builds run side by side; `fix-builds.json` says what each was."""
+    from release_build import fixes_account
+
+    summary = json.loads(args.summary.read_text())
+    comparison = json.loads(args.comparison.read_text())
+    try:
+        planned = fixes_account.plan(summary, comparison)
+    except fixes_account.FixesError as error:
+        raise BuildError(str(error)) from None
+    out = args.out.resolve()
+    if out.exists() and any(out.iterdir()):
+        raise BuildError(f"{out} is not empty; the builds start in an empty folder")
+    out.mkdir(parents=True, exist_ok=True)
+    options = list(args.options)
+    entry = [sys.executable, str(Path(__file__).resolve())]
+
+    def one(planned_build: dict) -> dict:
+        selection = []
+        if planned_build["skip"]:
+            selection = ["--skip", *planned_build["skip"]]
+        elif planned_build["only"]:
+            selection = ["--only", *planned_build["only"]]
+        folder = out / planned_build["id"]
+        command = [*entry, "build", str(args.release.resolve()), str(folder), *selection]
+        command += ["--label", planned_build["label"], *options]
+        result = run(command, None, out / f"{planned_build['id']}.log", accept=tuple(range(256)))
+        ok = result["returncode"] == 0 and (folder / "audit" / "scores.csv").is_file()
+        return planned_build | {
+            "folder": planned_build["id"],
+            "status": "completed" if ok else "failed",
+            "seconds": result["seconds"],
+            "peak_memory_mb": round(result["peak_memory_mb"]),
+        }
+
+    for planned_build in planned["builds"]:
+        print(f"  {planned_build['label']}", flush=True)
+    for patch, datasets in planned["built_although_no_reach"].items():
+        print(
+            f"  built alone although the comparison gives it no reach: {patch}, which could "
+            f"also explain a changed row a score follows, in {datasets} dataset(s)",
+            flush=True,
+        )
+    for patch in planned["not_built"]:
+        print(f"  not built alone: {patch}, whose changes reach no result", flush=True)
+    with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
+        built = list(pool.map(one, planned["builds"]))
+    index = {
+        "builds": built,
+        "not_built": planned["not_built"],
+        "reach": planned["reach"],
+        "built_although_no_reach": planned["built_although_no_reach"],
+    }
+    (out / fixes_account.INDEX).write_text(json.dumps(index, indent=2) + "\n")
+    failed = [b["id"] for b in built if b["status"] != "completed"]
+    for b in built:
+        print(f"  {b['id']}: {b['status']} in {b['seconds']} s", flush=True)
+    return 1 if failed else 0
+
+
+def fixes(args: argparse.Namespace) -> int:
+    """The file of fixes, beside the run's local chain and its matrix (fixes_account.py)."""
+    project = Project(args.venvs.resolve() if args.venvs else None)
+    command = project.command(
+        *("python", str(HELPERS / "fixes_account.py")),
+        *(str(args.provider.resolve()), str(args.patched.resolve())),
+        *("--builds", str(args.builds.resolve()), "--out", str(args.out.resolve())),
+        *(["--world-factors", str(args.world_factors.resolve())] if args.world_factors else []),
+    )
+    done = subprocess.run(command, env={**os.environ, **project.env()})
+    return done.returncode
+
+
 # --- The whole path ----------------------------------------------------------------------
 
 
@@ -878,6 +960,8 @@ STEP_SAYS = {
     "comparison": "the two databases, compared exchange by exchange and score by score",
     "exports": "files for Brightway, openLCA, ILCD and SimaPro, and ecoSpold v1 again, "
     "each read back",
+    "fix builds": "the import fixes alone, and each patch that reaches a result alone",
+    "fixes": "each fix measured on its own, in a file that stays on this machine",
 }
 CONTRIBUTION_SAYS = {
     " build": "a contribution, built beside the patched copy",
@@ -1156,6 +1240,27 @@ def release(args: argparse.Namespace) -> int:
         ready=scored(provider) and scored(patched),
         why="a build has no audited database to compare",
     )
+    if not args.no_fixes:
+        # Each fix on its own, against BAFU's release: which patches reach a result is read
+        # from the comparison, so these come after it.
+        fix_folder = out / FIX_BUILDS
+        step(
+            "fix builds",
+            [*entry, "fix-builds", str(source), str(fix_folder)]
+            + ["--summary", str(summary), "--comparison", str(out / "comparison.json")]
+            + ["--", *options],
+            ready=done("comparison"),
+            why="the comparison did not run to the end; it says which patches reach a result",
+        )
+        step(
+            "fixes",
+            [*entry, "fixes", str(provider), str(patched), "--builds", str(fix_folder)]
+            + ["--out", str(out / LOCAL)]
+            + (["--world-factors", str(world)] if scored(world) else [])
+            + shared,
+            ready=done("fix builds"),
+            why="a fix was not built",
+        )
     step(
         "exports",
         export_command(patched, out / "exports" / "patched"),
@@ -1389,6 +1494,11 @@ def arguments() -> argparse.ArgumentParser:
     )
     r.add_argument("--no-layers", action="store_true", help="Build no contribution")
     r.add_argument(
+        "--no-fixes",
+        action="store_true",
+        help="Build no fix on its own: no import fixes alone, no patch alone, no file of fixes",
+    )
+    r.add_argument(
         "--partial-release",
         action="store_true",
         help="RELEASE is not a full release of BAFU (a test release): that it is unknown "
@@ -1425,11 +1535,48 @@ def arguments() -> argparse.ArgumentParser:
     )
     common(c)
     c.set_defaults(run=compare)
+
+    fb = sub.add_parser(
+        "fix-builds",
+        help="Build the import fixes alone, and each patch that reaches a result alone",
+        usage="%(prog)s release out --summary FILE --comparison FILE [--jobs N] [-- build options]",
+        epilog="After --: the options of `build` each build takes (tools, pins, linking, ...).",
+    )
+    fb.add_argument("release", type=Path, help="Folder with BAFU's EcoSpold 1 files")
+    fb.add_argument("out", type=Path, help="Empty folder for the builds")
+    fb.add_argument("--summary", type=Path, required=True, help="Run summary of the patched build")
+    fb.add_argument(
+        "--comparison",
+        type=Path,
+        required=True,
+        help="comparison.json of BAFU's release with the patched copy: who reaches a result",
+    )
+    fb.add_argument("--jobs", type=int, default=2, help="Builds side by side (default: 2)")
+    # the options after -- are split off before parsing (`main`): a positional that takes the
+    # rest would also take --summary and --comparison when they follow the folders
+    fb.set_defaults(run=fix_builds, options=[])
+
+    fx = sub.add_parser("fixes", help="The file of fixes, beside the run's local chain")
+    fx.add_argument("provider", type=Path, help="Build folder of BAFU's release")
+    fx.add_argument("patched", type=Path, help="Build folder of the patched copy")
+    fx.add_argument("--builds", type=Path, required=True, help="Folder fix-builds wrote")
+    fx.add_argument("--out", type=Path, required=True, help="Folder for the local files")
+    fx.add_argument("--world-factors", type=Path, metavar="BUILD", help="See `compare`")
+    common(fx)
+    fx.set_defaults(run=fixes)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    passed = []
+    if argv[:1] == ["fix-builds"] and "--" in argv:
+        # `fix-builds ... -- <build options>`: what follows -- goes to each build untouched
+        at = argv.index("--")
+        argv, passed = argv[:at], argv[at + 1 :]
     args = arguments().parse_args(argv)
+    if passed:
+        args.options = passed
     try:
         return args.run(args)
     except (BuildError, adapter.AdapterError) as error:
