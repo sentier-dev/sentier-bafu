@@ -39,6 +39,7 @@ on:
       - "scripts/export_release.py"
       - "scripts/export_release.py.lock"
       - "scripts/release_build/**"
+      - "scripts/runrecord/**"
       - "src/bafu_brightway/**"
       - "community/layers/**"
       - "pyproject.toml"

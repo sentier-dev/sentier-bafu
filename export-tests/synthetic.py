@@ -250,6 +250,9 @@ def with_ef_compartments(flows, inventory):
         # BAFU's own compartments, on flows without an EF 3.1 flow.
         "uranium-river": _flow("Uranium alpha", ("emissions to water", "river"), "kilo Becquerel"),
         "noise": _flow("Noise, road", ("non material emissions", "unspecified"), "kilometer"),
+        # A biotic resource of EF 3.1 (standing wood), which only a build of the second
+        # linking holds: one level, `biota`, declared in export_labels.toml.
+        "wood-ef": _flow("wood, standing", ("biota",), "cubic meter", resource),
     }
     flows.update(added)
     inventory["farm"] = _process(
@@ -258,6 +261,30 @@ def with_ef_compartments(flows, inventory):
         "hectare",
         [("biosphere", code, 0.5 + position) for position, code in enumerate(added)],
     )
+
+
+def with_letters_the_simapro_file_lacks(flows, inventory):
+    """Add emissions whose names have letters outside Windows-1252, as Brightway Flows has."""
+    flows["lactone"] = _flow("Γ-butyrolactone", ("emissions to water", "river"), "kilogram")
+    flows["hch"] = _flow("α-hexachlorocyclohexane", ("air",), "kilogram")
+    flows["co2-sub"] = _flow("CO₂ of a made-up kind", ("air",), "kilogram")
+    for position, code in enumerate(("lactone", "hch", "co2-sub")):
+        inventory["heat"]["_exchanges"].append(("biosphere", code, 0.125 * (position + 1)))
+
+
+def with_a_spelled_out_name_that_is_taken(flows, inventory):
+    """Add two emissions into one compartment whose names are one name once the Greek letter
+    is spelled out."""
+    flows["hch-greek"] = _flow("α-hexachlorocyclohexane", ("air",), "kilogram")
+    flows["hch-latin"] = _flow("alpha-hexachlorocyclohexane", ("air",), "kilogram")
+    for position, code in enumerate(("hch-greek", "hch-latin")):
+        inventory["heat"]["_exchanges"].append(("biosphere", code, 0.125 * (position + 1)))
+
+
+def with_a_name_no_rule_writes(flows, inventory):
+    """Add an emission whose name has a character that no rule says how to write."""
+    flows["snow"] = _flow("Snow ☃, made up", ("air",), "kilogram")
+    inventory["heat"]["_exchanges"].append(("biosphere", "snow", 0.25))
 
 
 def with_an_undeclared_compartment(flows, inventory):

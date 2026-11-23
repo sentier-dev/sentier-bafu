@@ -151,9 +151,11 @@ def build(
     of that country (`located.locate`). `include_located=False` leaves every flow on the
     factor without a location."""
     nodes: Mapping[str, tuple[str, str]] | None = None
+    located_by_method: Mapping[str, int] = {}
     if include_located:
         found = locate(bridge, methods, countries or {})
         bridge, methods, nodes = found.bridge, found.methods, found.nodes
+        located_by_method = found.per_method
         ef_flows = _with_flows_of_countries(ef_flows, methods, nodes)
     built = build_installer(
         inventory=inventory,
@@ -172,6 +174,8 @@ def build(
     cover = Coverage(
         **asdict(built.coverage),
         flows_located=sum(1 for code in named if bridge[code].target_code in (nodes or {})),
+        # the methods in which naming a country can move a score, and no other
+        located_by_method=tuple(sorted(located_by_method.items())),
         flows_named_without=0
         if nodes is None
         else sum(1 for code in named if bridge[code].target_code not in nodes),

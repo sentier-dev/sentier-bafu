@@ -23,6 +23,7 @@ on:
       - "scripts/export_release.py"
       - "scripts/export_release.py.lock"
       - "scripts/release_build/**"
+      - "scripts/runrecord/**"
       - "scripts/build_brightway_flows_targets.py"
       - "scripts/compare_flow_linkings.py"
       - "scripts/compare_located_factors.py"
